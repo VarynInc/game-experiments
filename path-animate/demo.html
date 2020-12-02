@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Demo: Animate sprite</title>
+
+    <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script id="editable">
+    var canvas;
+    var stage;
+    var stageWidth;
+    var stageHeight;
+    var drawingCanvas;
+    var loader;
+    var oldPt;
+    var oldMidPt;
+    var drawColor;
+    var stroke;
+    var index;
+
+    function init() {
+        canvas = document.getElementById("myCanvas");
+        index = 0;
+        drawColor = "#66ee55";
+        stroke = 4;
+
+        //check to see if we are running in a browser with touch support
+        stage = new createjs.Stage(canvas);
+        stage.autoClear = true;
+        stage.enableDOMEvents(true);
+        stageWidth = stage.canvas.width;
+        stageHeight = stage.canvas.height;
+
+        createjs.Touch.enable(stage);
+        createjs.Ticker.framerate = 24;
+
+        loadAssets();
+    }
+
+    function loadAssets() {
+        loader = new createjs.LoadQueue(false);
+        loader.addEventListener("complete", handleLoadComplete);
+        loader.loadManifest([
+            { src: "airplane.png", id: "airplane" },
+            { src: "background.jpg", id: "background" }
+        ],
+        true, "./");
+    }
+
+    function handleLoadComplete() {
+        var background = new createjs.Shape();
+        background.graphics.beginBitmapFill(loader.getResult("background")).drawRect(0, 0, stageWidth, stageHeight);
+        background.cache(0, 0, stageWidth, stageHeight);
+
+        airplane = new createjs.Bitmap(loader.getResult("airplane"));
+        airplane.y = stageHeight * 0.5;
+        airplane.x = stageWidth * 0.5;
+
+        stage.addChild(background, airplane);
+
+        drawingCanvas = new createjs.Shape();
+
+        stage.addEventListener("stagemousedown", handleMouseDown);
+        stage.addEventListener("stagemouseup", handleMouseUp);
+
+        stage.addChild(drawingCanvas);
+        stage.update();
+    }
+
+    function handleMouseDown(event) {
+        if (!event.primary) { return; }
+
+        // clear the prior drawing
+        drawingCanvas.graphics.clear();
+
+        // register the starting point and track the mouse
+        oldPt = new createjs.Point(stage.mouseX, stage.mouseY);
+        oldMidPt = oldPt.clone();
+        stage.addEventListener("stagemousemove", handleMouseMove);
+    }
+
+    function handleMouseMove(event) {
+        if (!event.primary) { return; }
+        var midPt = new createjs.Point((oldPt.x + stage.mouseX) / 2, (oldPt.y + stage.mouseY) / 2);
+
+        drawingCanvas.graphics.setStrokeStyle(stroke, 'round', 'round').beginStroke(drawColor).moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+
+        oldPt.x = stage.mouseX;
+        oldPt.y = stage.mouseY;
+
+        oldMidPt.x = midPt.x;
+        oldMidPt.y = midPt.y;
+
+        stage.update();
+    }
+
+    function handleMouseUp(event) {
+        if (!event.primary) { return; }
+        // stop tracking mouse
+        stage.removeEventListener("stagemousemove", handleMouseMove);
+    }
+
+    </script>
+</head>
+
+<body onload="init();">
+    <header class="EaselJS">
+        <h1>Demo</h1>
+        <p>Draw and animate</p>
+    </header>
+    <canvas id="myCanvas" width="960" height="400"></canvas>
+</body>
+</html>
