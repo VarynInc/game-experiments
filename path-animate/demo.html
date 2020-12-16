@@ -57,6 +57,7 @@
         airplane = new createjs.Bitmap(loader.getResult("airplane"));
         airplane.y = stageHeight * 0.5;
         airplane.x = stageWidth * 0.5;
+        airplane.angle = 0;
 
         stage.addChild(background, airplane);
 
@@ -97,6 +98,25 @@
     }
 
     function handleMouseUp(event) {
+
+        speedConst = 3; // lower = faster plane travel
+
+        xDist = airplane.x - stage.mouseX;
+        yDist = airplane.y - stage.mouseY;
+        dist = Math.sqrt(Math.pow(xDist, 2) + Math.pow(yDist, 2));
+
+        // finds correct angle for airplane
+        angle = Math.atan(yDist/xDist) * (180 / Math.PI);
+        (xDist < 0) ? angle += 90 : angle -= 90;
+
+        //airplane.rotation = angle;
+
+        createjs.Tween.get(airplane)
+            .to({rotation: angle}, Math.abs(airplane.angle - angle) * speedConst)
+            .to({x: stage.mouseX, y: stage.mouseY}, dist * speedConst);
+
+        createjs.Ticker.addEventListener("tick", stage);
+        airplane.angle = angle;
 
         if (!event.primary) { return; }
         // stop tracking mouse
