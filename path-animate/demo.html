@@ -18,11 +18,9 @@
     var oldMidPt;
     var drawColor;
     var stroke;
-    var index;
 
     function init() {
         canvas = document.getElementById("myCanvas");
-        index = 0;
         drawColor = "#66ee55";
         stroke = 4;
 
@@ -53,12 +51,14 @@
         var background = new createjs.Shape();
         background.graphics.beginBitmapFill(loader.getResult("background")).drawRect(0, 0, stageWidth, stageHeight);
         background.cache(0, 0, stageWidth, stageHeight);
+        stage.addChild(background);
 
         airplane = new createjs.Bitmap(loader.getResult("airplane"));
         airplane.y = stageHeight * 0.5;
         airplane.x = stageWidth * 0.5;
-
-        stage.addChild(background, airplane);
+        airplane.regX = airplane.image.width * 0.5;
+        airplane.regY = airplane.image.height * 0.5;
+        stage.addChild(airplane);
 
         drawingCanvas = new createjs.Shape();
 
@@ -71,6 +71,9 @@
 
     function handleMouseDown(event) {
         if (!event.primary) { return; }
+
+        airplane.rotation = calcAngleDegrees(airplane.x, airplane.y, stage.mouseX, stage.mouseY);
+        stage.update();
 
         // clear the prior drawing
         drawingCanvas.graphics.clear();
@@ -102,6 +105,14 @@
         // stop tracking mouse
         stage.removeEventListener("stagemousemove", handleMouseMove);
     }
+
+    function calcAngleDegrees(xSprite, ySprite, xTarget, yTarget) {
+        const spriteInitialRotation = -1.5708; // sprite image is rotated -90 degrees
+        const dx = xSprite - xTarget;
+        const dy = ySprite - yTarget;
+        return (Math.atan2(dy, dx) + spriteInitialRotation) * 180 / Math.PI;
+    }
+
 
     </script>
 </head>
