@@ -97,19 +97,32 @@
         stage.update();
     }
 
+    function distanceBetweenPoints(xDist, yDist) {
+
+        dist = Math.sqrt(Math.pow(xDist, 2) + Math.pow(yDist, 2));
+
+        return dist;
+    }
+
+    function angleOfObject(xDist, yDist) {
+        angle = Math.atan(yDist/xDist) * (180 / Math.PI);
+        (xDist < 0) ? angle += 90 : angle -= 90;
+
+        return angle;
+    }
+
     function handleMouseUp(event) {
 
         speedConst = 3; // lower = faster plane travel
 
         xDist = airplane.x - stage.mouseX;
         yDist = airplane.y - stage.mouseY;
-        dist = Math.sqrt(Math.pow(xDist, 2) + Math.pow(yDist, 2));
+
+        // finds distance between two points using x and y distance of points
+        dist = distanceBetweenPoints(xDist, yDist);
 
         // finds correct angle for airplane
-        angle = Math.atan(yDist/xDist) * (180 / Math.PI);
-        (xDist < 0) ? angle += 90 : angle -= 90;
-
-        //airplane.rotation = angle;
+        angle = angleOfObject(xDist, yDist);
 
         createjs.Tween.get(airplane)
             .to({rotation: angle}, Math.abs(airplane.angle - angle) * speedConst)
