@@ -19,6 +19,7 @@
     var drawColor;
     var stroke;
     var index;
+    var arrayOfPlanes = [];
 
     function init() {
         canvas = document.getElementById("myCanvas");
@@ -49,17 +50,25 @@
         true, "./");
     }
 
+    function createAirplane() {
+        airplane = new createjs.Bitmap(loader.getResult("airplane"));
+        airplane.y = stageHeight * 0.5;
+        airplane.x = stageWidth * 0.5;
+        airplane.regX = airplane.image.width * 0.5;
+        airplane.regY = airplane.image.height * 0.5;
+        airplane.angle = 0;
+
+        arrayOfPlanes.push(airplane);
+
+        return airplane;
+    }
+
     function handleLoadComplete() {
         var background = new createjs.Shape();
         background.graphics.beginBitmapFill(loader.getResult("background")).drawRect(0, 0, stageWidth, stageHeight);
         background.cache(0, 0, stageWidth, stageHeight);
 
-        airplane = new createjs.Bitmap(loader.getResult("airplane"));
-        airplane.y = stageHeight * 0.5;
-        airplane.x = stageWidth * 0.5;
-        airplane.angle = 0;
-
-        stage.addChild(background, airplane);
+        stage.addChild(background, createAirplane());
 
         drawingCanvas = new createjs.Shape();
 
@@ -120,6 +129,19 @@
         // finds correct angle for airplane
         angle = angleOfObject(xDist, yDist);
         (xDist < 0) ? angle += 90 : angle -= 90;
+
+        // adjusts to find smallest angle
+
+        //(airplane.angle - angle > 180) ? angle += 360 : (airplane.angle - angle < -180) ? angle -= 360 : angle;
+
+        if (airplane.angle - angle > 180) {
+            angle += 360;
+        }
+
+        else if (airplane.angle - angle < -180) {
+            angle -= 360;
+        }
+
 
         createjs.Tween.get(airplane)
             .to({rotation: angle}, Math.abs(airplane.angle - angle) * speedConst)
