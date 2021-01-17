@@ -1,0 +1,35 @@
+{
+
+"images": [
+    "game-spritesheet.png"
+],
+
+"framerate": 20,
+"frames": [
+    [0, 0, 59, 60, 0, 0, 0],
+    [59, 0, 47, 47, 0, 0, 0],
+    [59, 47, 47, 42, 0, 0, 0],
+    [0, 60, 41, 32, 0, 0, 0],
+    [41, 89, 36, 37, 0, 0, 0],
+    [0, 92, 32, 33, 0, 0, 0],
+    [0, 125, 32, 33, 0, 0, 0],
+    [77, 89, 32, 33, 0, 0, 0],
+    [77, 122, 32, 33, 0, 0, 0],
+    [32, 126, 29, 18, 0, 0, 0]
+],
+
+"animations": {
+    "a": { "frames": [1, 0] },
+    "a-md": { "frames": [2] },
+    "a-prop": { "frames": [3] },
+    "a-mil": { "frames": [4] },
+    "chopper": { "frames": [5, 6, 7, 8] },
+    "a-cub": { "frames": [9] }
+},
+
+"texturepacker": [
+        "SmartUpdateHash: $TexturePacker:SmartUpdate:72e1009f57d323ea1641547132a1c253:508904fad16eec72d72e698531746c24:d6f8f2fe5d22eff1608c933e38c8cab4$",
+        "Created with TexturePacker (https://www.codeandweb.com/texturepacker) for EaselJS"
+]
+
+}
