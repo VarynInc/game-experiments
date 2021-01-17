@@ -19,7 +19,8 @@
 ],
 
 "animations": {
-    "a": { "frames": [1, 0] },
+    "a-jumbo": { "frames": [0] },
+    "a-jet": { "frames": [1] },
     "a-md": { "frames": [2] },
     "a-prop": { "frames": [3] },
     "a-mil": { "frames": [4] },
@@ -28,7 +29,7 @@
 },
 
 "texturepacker": [
-        "SmartUpdateHash: $TexturePacker:SmartUpdate:72e1009f57d323ea1641547132a1c253:508904fad16eec72d72e698531746c24:d6f8f2fe5d22eff1608c933e38c8cab4$",
+        "SmartUpdateHash: $TexturePacker:SmartUpdate:b1aec0b790a4f7a083db1972c5cca221:379f8a6343e07622faf62451df0425cb:d6f8f2fe5d22eff1608c933e38c8cab4$",
         "Created with TexturePacker (https://www.codeandweb.com/texturepacker) for EaselJS"
 ]
 
