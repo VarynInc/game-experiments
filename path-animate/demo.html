@@ -11,21 +11,21 @@
     var stage;
     var stageWidth;
     var stageHeight;
-    var drawingCanvas;
-    var airplane;
+    var airplaneNextId;
+    var airplaneActiveIndex;
     var loader;
-    var oldPt;
-    var oldMidPt;
+    var priorPoint;
+    var priorMidPoint;
     var drawColor;
     var stroke;
-    var index;
     var arrayOfPlanes = [];
 
     function init() {
         canvas = document.getElementById("myCanvas");
-        index = 0;
         drawColor = "#66ee55";
         stroke = 4;
+        airplaneNextId = 1;
+        airplaneActiveIndex = 0;
 
         //check to see if we are running in a browser with touch support
         stage = new createjs.Stage(canvas);
@@ -51,31 +51,93 @@
     }
 
     function createAirplane() {
-        airplane = new createjs.Bitmap(loader.getResult("airplane"));
-        airplane.y = stageHeight * 0.5;
-        airplane.x = stageWidth * 0.5;
-        airplane.regX = airplane.image.width * 0.5;
-        airplane.regY = airplane.image.height * 0.5;
-        airplane.angle = 0;
+        var airplane = new createjs.Bitmap(loader.getResult("airplane"));
+        if (airplane != null) {
+            airplane.width = airplane.image.width;
+            airplane.height = airplane.image.height;
+            airplane.regX = airplane.width * 0.5;
+            airplane.regY = airplane.height * 0.5;
+            airplane.angle = 0;
+            airplane.speed = 15;
+            airplane.id = airplaneNextId;
+            airplaneNextId += 1;
+            arrayOfPlanes.push(airplane);
 
-        arrayOfPlanes.push(airplane);
+            // Container will hold all airplane visual assets: sprite, track, highlight, effects.
+            var airplaneContainer = new createjs.Container();
+            airplaneContainer.x = 0;
+            airplaneContainer.y = 0;
+            airplaneContainer.width = stageWidth;
+            airplaneContainer.height = stageHeight;
 
+            // Shape to hold the flight path and an array to record each point on the flight path
+            var drawingCanvas = new createjs.Shape();
+            drawingCanvas.name = "flight-path";
+            drawingCanvas.flightPath = [];
+
+            // position plane in its parent container
+            airplane.x = airplaneContainer.width * 0.5;
+            airplane.y = airplaneContainer.height - airplane.regY;
+            
+            // highlight
+            var graphics = new createjs.Graphics()
+                .setStrokeStyle(4)
+                .beginStroke("#009900")
+                .beginFill("#00ee00")
+                .drawCircle(0, 0, Math.max(airplane.width, airplane.height) * 0.6);
+            var highlight = new createjs.Shape(graphics);
+            highlight.x = airplane.x;
+            highlight.y = airplane.y;
+            highlight.alpha = 0.5;
+            highlight.visible = true;
+            highlight.cache(airplane.width * -1, airplane.height * -1, 2 * airplane.width, 2 * airplane.height);
+            createjs.Tween.get(highlight, {loop: -1})
+                .to({ alpha: 0 }, 1000)
+                .to({ alpha: 0.5 }, 1000);
+
+            // add DisplayObjects in drawing order
+            airplaneContainer.addChild(drawingCanvas);
+            airplaneContainer.addChild(highlight);
+            airplaneContainer.addChild(airplane);
+            stage.addChild(airplaneContainer);
+        }
         return airplane;
     }
 
+    function getAirplaneFlightPathCanvas(airplane) {
+        if (airplane != null && airplane.parent != null) {
+            return airplane.parent.getChildByName("flight-path");
+        }
+        return null;
+    }
+
+    function updateAirplanePosition(time, deltaTime) {
+        var airplane = arrayOfPlanes[airplaneActiveIndex];
+        var airplaneContainer = airplane.parent;
+        var highlight = airplaneContainer.getChildAt(1);
+        highlight.x = airplane.x;
+        highlight.y = airplane.y;
+    }
+
+    function createBackground() {
+        var background = stage.getChildByName("background");
+        if (background == null) {
+            background = new createjs.Shape();
+            background.name = "background";
+            background.graphics.beginBitmapFill(loader.getResult("background")).drawRect(0, 0, stageWidth, stageHeight);
+            background.cache(0, 0, stageWidth, stageHeight);
+            stage.addChild(background);
+        }
+    }
+
     function handleLoadComplete() {
-        var background = new createjs.Shape();
-        background.graphics.beginBitmapFill(loader.getResult("background")).drawRect(0, 0, stageWidth, stageHeight);
-        background.cache(0, 0, stageWidth, stageHeight);
-
-        stage.addChild(background, createAirplane());
-
-        drawingCanvas = new createjs.Shape();
+        createBackground();
+        createAirplane();
 
         stage.addEventListener("stagemousedown", handleMouseDown);
         stage.addEventListener("stagemouseup", handleMouseUp);
+        createjs.Ticker.addEventListener("tick", onEnterFrame);
 
-        stage.addChild(drawingCanvas);
         stage.update();
     }
 
@@ -83,25 +145,31 @@
         if (!event.primary) { return; }
 
         // clear the prior drawing
+        var drawingCanvas = getAirplaneFlightPathCanvas(arrayOfPlanes[airplaneActiveIndex]);
         drawingCanvas.graphics.clear();
 
         // register the starting point and track the mouse
-        oldPt = new createjs.Point(stage.mouseX, stage.mouseY);
-        oldMidPt = oldPt.clone();
+        priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
+        priorMidPoint = priorPoint.clone();
         stage.addEventListener("stagemousemove", handleMouseMove);
     }
 
     function handleMouseMove(event) {
         if (!event.primary) { return; }
-        var midPt = new createjs.Point((oldPt.x + stage.mouseX) / 2, (oldPt.y + stage.mouseY) / 2);
+        
+        var drawingCanvas = getAirplaneFlightPathCanvas(arrayOfPlanes[airplaneActiveIndex]);
+        var mouseX = stage.mouseX;
+        var mouseY = stage.mouseY;
+        var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
 
-        drawingCanvas.graphics.setStrokeStyle(stroke, 'round', 'round').beginStroke(drawColor).moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+        drawingCanvas.graphics.setStrokeStyle(stroke, 'round', 'round').beginStroke(drawColor).moveTo(midPt.x, midPt.y).curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
-        oldPt.x = stage.mouseX;
-        oldPt.y = stage.mouseY;
+        priorPoint.x = mouseX;
+        priorPoint.y = mouseY;
+        drawingCanvas.flightPath.push(priorPoint);
 
-        oldMidPt.x = midPt.x;
-        oldMidPt.y = midPt.y;
+        priorMidPoint.x = midPt.x;
+        priorMidPoint.y = midPt.y;
 
         stage.update();
     }
@@ -117,8 +185,8 @@
     }
 
     function handleMouseUp(event) {
-
-        speedConst = 4; // lower = faster plane travel
+        var airplane = arrayOfPlanes[airplaneActiveIndex];
+        var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
 
         xDist = airplane.x - stage.mouseX;
         yDist = airplane.y - stage.mouseY;
@@ -136,23 +204,25 @@
 
         if (airplane.angle - angle > 180) {
             angle += 360;
-        }
-
-        else if (airplane.angle - angle < -180) {
+        } else if (airplane.angle - angle < -180) {
             angle -= 360;
         }
 
-
         createjs.Tween.get(airplane)
-            .to({rotation: angle}, Math.abs(airplane.angle - angle) * speedConst)
-            .to({x: stage.mouseX, y: stage.mouseY}, dist * speedConst);
+            .to({rotation: angle}, Math.abs(airplane.angle - angle) * airplane.speed)
+            .to({x: stage.mouseX, y: stage.mouseY}, dist * airplane.speed);
 
-        createjs.Ticker.addEventListener("tick", stage);
         airplane.angle = angle;
 
         if (!event.primary) { return; }
         // stop tracking mouse
         stage.removeEventListener("stagemousemove", handleMouseMove);
+    }
+
+    function onEnterFrame(tickEvent) {
+        var deltaTime = tickEvent.delta / 1000;
+        updateAirplanePosition(tickEvent.time, deltaTime);
+        stage.update(tickEvent);
     }
 
     </script>
