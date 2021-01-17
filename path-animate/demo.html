@@ -92,8 +92,8 @@
             highlight.visible = true;
             highlight.cache(airplane.width * -1, airplane.height * -1, 2 * airplane.width, 2 * airplane.height);
             createjs.Tween.get(highlight, {loop: -1})
-                .to({ alpha: 0 }, 1000)
-                .to({ alpha: 0.5 }, 1000);
+                .to({ alpha: 0 }, 1000, createjs.Ease.getElasticIn(2, 5))
+                .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
 
             // add DisplayObjects in drawing order
             airplaneContainer.addChild(drawingCanvas);
