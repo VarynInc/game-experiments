@@ -191,6 +191,7 @@
         // clear the prior drawing
         var drawingCanvas = getAirplaneFlightPathCanvas(arrayOfPlanes[airplaneActiveIndex]);
         drawingCanvas.graphics.clear();
+        drawingCanvas.flightPath = [];
 
         // register the starting point and track the mouse
         priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
