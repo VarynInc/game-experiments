@@ -16,16 +16,28 @@
     var loader;
     var priorPoint;
     var priorMidPoint;
-    var drawColor;
-    var stroke;
+    var flightPathAttributes;
+    var airplaneHighlight;
     var arrayOfPlanes = [];
 
     function init() {
         canvas = document.getElementById("myCanvas");
-        drawColor = "#66ee55";
-        stroke = 4;
         airplaneNextId = 1;
         airplaneActiveIndex = 0;
+        flightPathAttributes = {
+            lineColor: "#66ee55",
+            lineWidth: 4
+        };
+        airplaneHighlight = {
+            fillColor: "#00ee00",
+            strokeColor: "#009900",
+            strokeWidth: 4
+        };
+        airplaneAlert = {
+            fillColor: "#ee0000",
+            strokeColor: "#990000",
+            strokeWidth: 4
+        };
 
         //check to see if we are running in a browser with touch support
         stage = new createjs.Stage(canvas);
@@ -35,7 +47,7 @@
         stageHeight = stage.canvas.height;
 
         createjs.Touch.enable(stage);
-        createjs.Ticker.framerate = 24;
+        createjs.Ticker.framerate = 30;
 
         loadAssets();
     }
@@ -80,26 +92,58 @@
             airplane.y = airplaneContainer.height - airplane.regY;
             
             // highlight
-            var graphics = new createjs.Graphics()
-                .setStrokeStyle(4)
-                .beginStroke("#009900")
-                .beginFill("#00ee00")
-                .drawCircle(0, 0, Math.max(airplane.width, airplane.height) * 0.6);
+            airplane.setHighlight = function () {
+                var highlight = this.parent.getChildByName("highlight");
+                if (highlight != null) {
+                    var graphics = highlight.graphics;
+                    graphics.clear();
+                    graphics
+                        .setStrokeStyle(airplaneHighlight.strokeWidth)
+                        .beginStroke(airplaneHighlight.strokeColor)
+                        .beginFill(airplaneHighlight.fillColor)
+                        .drawCircle(0, 0, Math.max(this.width, this.height) * 0.6);
+                    highlight.updateCache();
+                }
+            }
+            airplane.setAlert = function () {
+                var highlight = this.parent.getChildByName("highlight");
+                if (highlight != null) {
+                    var graphics = highlight.graphics;
+                    graphics.clear();
+                    graphics
+                        .setStrokeStyle(airplaneAlert.strokeWidth)
+                        .beginStroke(airplaneAlert.strokeColor)
+                        .beginFill(airplaneAlert.fillColor)
+                        .drawCircle(0, 0, Math.max(this.width, this.height) * 0.6);
+                    highlight.updateCache();
+                }
+            }
+
+            var graphics = new createjs.Graphics();
             var highlight = new createjs.Shape(graphics);
             highlight.x = airplane.x;
             highlight.y = airplane.y;
             highlight.alpha = 0.5;
             highlight.visible = true;
+            highlight.name = "highlight";
             highlight.cache(airplane.width * -1, airplane.height * -1, 2 * airplane.width, 2 * airplane.height);
-            createjs.Tween.get(highlight, {loop: -1})
-                .to({ alpha: 0 }, 1000, createjs.Ease.getElasticIn(2, 5))
-                .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
 
             // add DisplayObjects in drawing order
             airplaneContainer.addChild(drawingCanvas);
             airplaneContainer.addChild(highlight);
             airplaneContainer.addChild(airplane);
             stage.addChild(airplaneContainer);
+
+            airplane.setAlert();
+            createjs.Tween.get(highlight, { loop: -1 })
+                .to({ alpha: 0 }, 1000, createjs.Ease.getElasticIn(2, 5))
+                .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
+            
+            airplane.activate = function () {
+                this.setHighlight();
+                window.setTimeout(this.setAlert.bind(this), 3000);
+            };
+            airplane.addEventListener("click", airplane.activate.bind(airplane));
         }
         return airplane;
     }
@@ -163,7 +207,11 @@
         var mouseY = stage.mouseY;
         var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
 
-        drawingCanvas.graphics.setStrokeStyle(stroke, 'round', 'round').beginStroke(drawColor).moveTo(midPt.x, midPt.y).curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
+        drawingCanvas.graphics
+            .setStrokeStyle(flightPathAttributes.lineWidth, 'round', 'round')
+            .beginStroke(flightPathAttributes.lineColor)
+            .moveTo(midPt.x, midPt.y)
+            .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
         priorPoint.x = mouseX;
         priorPoint.y = mouseY;
