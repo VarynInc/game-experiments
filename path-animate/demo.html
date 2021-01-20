@@ -87,9 +87,9 @@
             drawingCanvas.name = "flight-path";
             drawingCanvas.flightPath = [];
 
-            // position plane in its parent container
-            airplane.x = airplaneContainer.width * 0.5;
-            airplane.y = airplaneContainer.height - airplane.regY;
+
+            //airplane.x = airplaneContainer.width * 0.5;
+            //airplane.y = airplaneContainer.height - airplane.regY;
             
             // highlight
             airplane.setHighlight = function () {
@@ -104,7 +104,7 @@
                         .drawCircle(0, 0, Math.max(this.width, this.height) * 0.6);
                     highlight.updateCache();
                 }
-            }
+            };
             airplane.setAlert = function () {
                 var highlight = this.parent.getChildByName("highlight");
                 if (highlight != null) {
@@ -117,7 +117,45 @@
                         .drawCircle(0, 0, Math.max(this.width, this.height) * 0.6);
                     highlight.updateCache();
                 }
-            }
+            };
+
+            airplane.setPosition = function () {
+                var temp = Math.floor(Math.random() * 4); // determines which side airplane will enter from
+                var endpoint = [];
+
+                if (temp < 2) { // airplane coming from either top or below
+                    airplane.x = Math.floor(Math.random() * canvas.width);
+                    endpoint[0] = Math.floor(Math.random()*canvas.width);
+
+                    if (temp === 0) { // airplane coming from top
+                        airplane.y = -airplane.height;
+                        endpoint[1] = canvas.height + airplane.height;
+
+                    } else if (temp === 1) { // airplane coming from below
+                        airplane.y = canvas.height + airplane.height;
+                        endpoint[1] = -airplane.height;
+                    }
+                }
+
+                else if (temp >= 2) { // airplane coming from either right or left
+                    airplane.y = Math.floor(Math.random() * canvas.height);
+                    endpoint[1] = Math.floor(Math.random()*canvas.height);
+
+                    if (temp === 2) { // airplane coming from left
+                        airplane.x = -airplane.height;
+                        endpoint[0] = canvas.width + airplane.height;
+                    } else if (temp === 3) { // airplane coming from right
+                        airplane.x = canvas.width + airplane.height;
+                        endpoint[0] = -airplane.height;
+                    }
+                }
+
+                movePlane(airplane, endpoint[0], endpoint[1]);
+
+            };
+
+            // position plane in its parent container
+            airplane.setPosition();
 
             var graphics = new createjs.Graphics();
             var highlight = new createjs.Shape(graphics);
@@ -161,6 +199,14 @@
         var highlight = airplaneContainer.getChildAt(1);
         highlight.x = airplane.x;
         highlight.y = airplane.y;
+
+        // code to make plane come from different direction once off screen, but has bugs
+        /*
+        if (airplane.x <= -airplane.height || airplane.x >= canvas.width+airplane.height || airplane.y < -airplane.height
+            || airplane.y > canvas.height+airplane.height) {
+            airplane.setPosition();
+        }
+        */
     }
 
     function createBackground() {
@@ -233,12 +279,9 @@
         return Math.atan(yDist/xDist) * (180 / Math.PI);
     }
 
-    function handleMouseUp(event) {
-        var airplane = arrayOfPlanes[airplaneActiveIndex];
-        var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
-
-        xDist = airplane.x - stage.mouseX;
-        yDist = airplane.y - stage.mouseY;
+    function movePlane(airplane, pointX, pointY) {
+        xDist = airplane.x - pointX;
+        yDist = airplane.y - pointY;
 
         // finds distance between two points using x and y distance of points
         dist = distanceBetweenPoints(xDist, yDist);
@@ -259,9 +302,16 @@
 
         createjs.Tween.get(airplane)
             .to({rotation: angle}, Math.abs(airplane.angle - angle) * airplane.speed)
-            .to({x: stage.mouseX, y: stage.mouseY}, dist * airplane.speed);
+            .to({x: pointX, y: pointY}, dist * airplane.speed);
 
         airplane.angle = angle;
+    }
+
+    function handleMouseUp(event) {
+        var airplane = arrayOfPlanes[airplaneActiveIndex];
+        var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+
+        movePlane(airplane, stage.mouseX, stage.mouseY);
 
         if (!event.primary) { return; }
         // stop tracking mouse
