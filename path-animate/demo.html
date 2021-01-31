@@ -87,10 +87,6 @@
             drawingCanvas.name = "flight-path";
             drawingCanvas.flightPath = [];
 
-
-            //airplane.x = airplaneContainer.width * 0.5;
-            //airplane.y = airplaneContainer.height - airplane.regY;
-            
             // highlight
             airplane.setHighlight = function () {
                 var highlight = this.parent.getChildByName("highlight");
@@ -130,7 +126,6 @@
                     if (quadrant === 0) { // airplane coming from top
                         airplane.y = -airplane.height;
                         finalPosition.y = canvas.height + airplane.height;
-
                     } else { // airplane coming from below
                         airplane.y = canvas.height + airplane.height;
                         finalPosition.y = -airplane.height;
