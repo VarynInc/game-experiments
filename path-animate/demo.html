@@ -119,43 +119,40 @@
                 }
             };
 
-            airplane.setPosition = function () {
-                var temp = Math.floor(Math.random() * 4); // determines which side airplane will enter from
-                var endpoint = [];
+            airplane.setStartPosition = function () {
+                var quadrant = Math.floor(Math.random() * 4); // determines which side airplane will enter from
+                var finalPosition = {};
 
-                if (temp < 2) { // airplane coming from either top or below
+                if (quadrant < 2) { // airplane coming from either top or below
                     airplane.x = Math.floor(Math.random() * canvas.width);
-                    endpoint[0] = Math.floor(Math.random()*canvas.width);
+                    finalPosition.x = Math.floor(Math.random() * canvas.width);
 
-                    if (temp === 0) { // airplane coming from top
+                    if (quadrant === 0) { // airplane coming from top
                         airplane.y = -airplane.height;
-                        endpoint[1] = canvas.height + airplane.height;
+                        finalPosition.y = canvas.height + airplane.height;
 
-                    } else if (temp === 1) { // airplane coming from below
+                    } else { // airplane coming from below
                         airplane.y = canvas.height + airplane.height;
-                        endpoint[1] = -airplane.height;
+                        finalPosition.y = -airplane.height;
                     }
-                }
-
-                else if (temp >= 2) { // airplane coming from either right or left
+                } else { // airplane coming from either right or left
                     airplane.y = Math.floor(Math.random() * canvas.height);
-                    endpoint[1] = Math.floor(Math.random()*canvas.height);
+                    finalPosition.y = Math.floor(Math.random() * canvas.height);
 
-                    if (temp === 2) { // airplane coming from left
+                    if (quadrant === 2) { // airplane coming from left
                         airplane.x = -airplane.height;
-                        endpoint[0] = canvas.width + airplane.height;
-                    } else if (temp === 3) { // airplane coming from right
+                        finalPosition.x = canvas.width + airplane.height;
+                    } else { // airplane coming from right
                         airplane.x = canvas.width + airplane.height;
-                        endpoint[0] = -airplane.height;
+                        finalPosition.x = -airplane.height;
                     }
                 }
 
-                movePlane(airplane, endpoint[0], endpoint[1]);
-
+                movePlane(airplane, finalPosition);
             };
 
             // position plane in its parent container
-            airplane.setPosition();
+            airplane.setStartPosition();
 
             var graphics = new createjs.Graphics();
             var highlight = new createjs.Shape(graphics);
@@ -199,14 +196,6 @@
         var highlight = airplaneContainer.getChildAt(1);
         highlight.x = airplane.x;
         highlight.y = airplane.y;
-
-        // code to make plane come from different direction once off screen, but has bugs
-        /*
-        if (airplane.x <= -airplane.height || airplane.x >= canvas.width+airplane.height || airplane.y < -airplane.height
-            || airplane.y > canvas.height+airplane.height) {
-            airplane.setPosition();
-        }
-        */
     }
 
     function createBackground() {
@@ -279,30 +268,29 @@
         return Math.atan(yDist/xDist) * (180 / Math.PI);
     }
 
-    function movePlane(airplane, pointX, pointY) {
-        xDist = airplane.x - pointX;
-        yDist = airplane.y - pointY;
+    function movePlane(airplane, toPosition) {
+        var xDist = airplane.x - toPosition.x;
+        var yDist = airplane.y - toPosition.y;
 
         // finds distance between two points using x and y distance of points
-        dist = distanceBetweenPoints(xDist, yDist);
+        var dist = distanceBetweenPoints(xDist, yDist);
 
         // finds correct angle for airplane
-        angle = angleOfObject(xDist, yDist);
+        var angle = angleOfObject(xDist, yDist);
         (xDist < 0) ? angle += 90 : angle -= 90;
 
         // adjusts to find smallest angle
-
-        //(airplane.angle - angle > 180) ? angle += 360 : (airplane.angle - angle < -180) ? angle -= 360 : angle;
-
-        if (airplane.angle - angle > 180) {
+        var deltaAngle = airplane.angle - angle;
+        if (deltaAngle > 180) {
             angle += 360;
-        } else if (airplane.angle - angle < -180) {
+        } else if (deltaAngle < -180) {
             angle -= 360;
         }
 
-        createjs.Tween.get(airplane)
+        createjs.Tween.get(airplane, {override: true})
             .to({rotation: angle}, Math.abs(airplane.angle - angle) * airplane.speed)
-            .to({x: pointX, y: pointY}, dist * airplane.speed);
+            .to({x: toPosition.x, y: toPosition.y}, dist * airplane.speed)
+            .call(airplane.setStartPosition, null, airplane);
 
         airplane.angle = angle;
     }
@@ -311,7 +299,7 @@
         var airplane = arrayOfPlanes[airplaneActiveIndex];
         var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
 
-        movePlane(airplane, stage.mouseX, stage.mouseY);
+        movePlane(airplane, { x: stage.mouseX, y: stage.mouseY });
 
         if (!event.primary) { return; }
         // stop tracking mouse
