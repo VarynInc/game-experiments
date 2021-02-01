@@ -11,6 +11,8 @@
     var stage;
     var stageWidth;
     var stageHeight;
+    var framerate = 30;
+    var framesPerSecond = framerate / 1000;
     var airplaneNextId;
     var airplaneActiveIndex;
     var loader;
@@ -19,6 +21,15 @@
     var flightPathAttributes;
     var airplaneHighlight;
     var arrayOfPlanes = [];
+    var airplaneSpriteSheet;
+    var airplaneSprites = [
+        "a-jumbo",
+        "a-jet",
+        "a-md",
+        "a-prop",
+        "a-cub",
+        "a-mil"
+    ];
 
     function init() {
         canvas = document.getElementById("myCanvas");
@@ -47,7 +58,7 @@
         stageHeight = stage.canvas.height;
 
         createjs.Touch.enable(stage);
-        createjs.Ticker.framerate = 30;
+        createjs.Ticker.framerate = framerate;
 
         loadAssets();
     }
@@ -56,17 +67,21 @@
         loader = new createjs.LoadQueue(false);
         loader.addEventListener("complete", handleLoadComplete);
         loader.loadManifest([
-            { src: "airplane.png", id: "airplane" },
+            { src: "game-spritesheet.png", id: "game-sprites" },
+            { src: "game-spritesheet.json", id: "game-spriteframes" },
             { src: "background.jpg", id: "background" }
         ],
         true, "./");
     }
 
     function createAirplane() {
-        var airplane = new createjs.Bitmap(loader.getResult("airplane"));
+        var nextPlaneType = Math.floor(Math.random() * airplaneSprites.length);
+        var airplaneFrame = airplaneSprites[nextPlaneType];
+        var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
         if (airplane != null) {
-            airplane.width = airplane.image.width;
-            airplane.height = airplane.image.height;
+            var airplaneSize = getSpriteFrameSize(airplaneSpriteSheet, airplaneFrame)
+            airplane.width = airplaneSize.width;
+            airplane.height = airplaneSize.height;
             airplane.regX = airplane.width * 0.5;
             airplane.regY = airplane.height * 0.5;
             airplane.angle = 0;
@@ -163,6 +178,13 @@
         highlight.y = airplane.y;
     }
 
+    function createSprites() {
+        var spriteFrames = loader.getResult("game-spriteframes");
+        spriteFrames.images = [loader.getResult("game-sprites")];
+        spriteFrames.framerate = framerate;
+        airplaneSpriteSheet = new createjs.SpriteSheet(spriteFrames);
+    }
+
     function createBackground() {
         var background = stage.getChildByName("background");
         if (background == null) {
@@ -175,6 +197,7 @@
     }
 
     function handleLoadComplete() {
+        createSprites();
         createBackground();
         createAirplane();
 
@@ -273,6 +296,29 @@
         updateAirplanePosition(tickEvent.time, deltaTime);
         stage.update(tickEvent);
     }
+
+    /**
+     * Go into the spritesheet frame data and determine the width/height of a specificed frame.
+     * @param {object} spriteSheet The spritesheet frame data.
+     * @param {string} spriteFrame The sprite frame to look up.
+     * @returns {object} An object with the {width, height} of the sprite frame.
+     */
+    function getSpriteFrameSize(spriteSheet, spriteFrame) {
+        var spriteWidth = 0;
+        var spriteHeight = 0;
+
+        if (spriteSheet !== null && spriteFrame !== null && spriteFrame.length > 0) {
+            var animation = spriteSheet.getAnimation(spriteFrame);
+            var frames = spriteSheet.getFrame(animation.frames[0]);
+            if (animation == null || frames == null) {
+                console.log("getSpriteFrameSize: No spritesheet data for " + spriteFrame);
+            } else {
+                spriteWidth = frames.rect.width;
+                spriteHeight = frames.rect.height;
+            }
+        }
+        return { width: spriteWidth, height: spriteHeight };
+    };
 
     </script>
 </head>
