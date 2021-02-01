@@ -79,7 +79,7 @@
         var airplaneFrame = airplaneSprites[nextPlaneType];
         var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
         if (airplane != null) {
-            var airplaneSize = getSpriteFrameSize(airplaneSpriteSheet, airplaneFrame)
+            var airplaneSize = airplane.getBounds();
             airplane.width = airplaneSize.width;
             airplane.height = airplaneSize.height;
             airplane.regX = airplane.width * 0.5;
@@ -296,29 +296,6 @@
         updateAirplanePosition(tickEvent.time, deltaTime);
         stage.update(tickEvent);
     }
-
-    /**
-     * Go into the spritesheet frame data and determine the width/height of a specificed frame.
-     * @param {object} spriteSheet The spritesheet frame data.
-     * @param {string} spriteFrame The sprite frame to look up.
-     * @returns {object} An object with the {width, height} of the sprite frame.
-     */
-    function getSpriteFrameSize(spriteSheet, spriteFrame) {
-        var spriteWidth = 0;
-        var spriteHeight = 0;
-
-        if (spriteSheet !== null && spriteFrame !== null && spriteFrame.length > 0) {
-            var animation = spriteSheet.getAnimation(spriteFrame);
-            var frames = spriteSheet.getFrame(animation.frames[0]);
-            if (animation == null || frames == null) {
-                console.log("getSpriteFrameSize: No spritesheet data for " + spriteFrame);
-            } else {
-                spriteWidth = frames.rect.width;
-                spriteHeight = frames.rect.height;
-            }
-        }
-        return { width: spriteWidth, height: spriteHeight };
-    };
 
     </script>
 </head>
