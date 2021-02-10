@@ -207,7 +207,9 @@
         var highlight = airplaneContainer.getChildAt(1);
         highlight.x = airplane.x;
         highlight.y = airplane.y;
+    }
 
+    function tooManyAirplanes() {
         if (arrayOfPlanes.length >= 5 && interval !== -1) {
             clearInterval(interval);
             interval = -1;
@@ -238,6 +240,7 @@
     function handleLoadComplete() {
         createSprites();
         createBackground();
+        createAirplane()
         interval = setInterval(createAirplane, 5000);
 
 
@@ -296,14 +299,7 @@
         return Math.atan(yDist/xDist) * (180 / Math.PI);
     }
 
-    function movePlane(airplane, toPosition) {
-        var xDist = airplane.x - toPosition.x;
-        var yDist = airplane.y - toPosition.y;
-
-        // finds distance between two points using x and y distance of points
-        var dist = distanceBetweenPoints(xDist, yDist);
-
-        // finds correct angle for airplane
+    function angleOfPlane(airplane, xDist, yDist) {
         var angle = angleOfObject(xDist, yDist);
         (xDist < 0) ? angle += 90 : angle -= 90;
 
@@ -314,6 +310,19 @@
         } else if (deltaAngle < -180) {
             angle -= 360;
         }
+
+        return angle;
+    }
+
+    function movePlane(airplane, toPosition) {
+        var xDist = airplane.x - toPosition.x;
+        var yDist = airplane.y - toPosition.y;
+
+        // finds distance between two points using x and y distance of points
+        var dist = distanceBetweenPoints(xDist, yDist);
+
+        // finds correct angle for airplane
+        var angle = angleOfPlane(airplane, xDist, yDist);
 
         createjs.Tween.get(airplane, {override: true})
             .to({rotation: angle}, Math.abs(airplane.angle - angle) * airplane.speed)
@@ -337,6 +346,7 @@
     function onEnterFrame(tickEvent) {
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
+        tooManyAirplanes();
         stage.update(tickEvent);
     }
 
