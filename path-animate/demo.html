@@ -74,9 +74,16 @@
         true, "./");
     }
 
+    function getRandomPlaneSprite() {
+        return airplaneSprites[Math.floor(Math.random() * airplaneSprites.length)];
+    }
+
+    function getChopperSprite() {
+        return "chopper";
+    }
+
     function createAirplane() {
-        var nextPlaneType = Math.floor(Math.random() * airplaneSprites.length);
-        var airplaneFrame = airplaneSprites[nextPlaneType];
+        var airplaneFrame = getChopperSprite(); // getRandomPlaneSprite();
         var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
         if (airplane != null) {
             var airplaneSize = airplane.getBounds();
