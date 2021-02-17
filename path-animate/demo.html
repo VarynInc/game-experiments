@@ -332,6 +332,23 @@
         airplane.angle = angle;
     }
 
+    function collisionDetection() {
+        for (var i = 0; i < arrayOfPlanes.length - 1; i++) {
+            for (var j = i + 1; j < arrayOfPlanes.length; j++) {
+                if ((arrayOfPlanes[i].x >= arrayOfPlanes[j].x && arrayOfPlanes[i].x <= arrayOfPlanes[j].x + arrayOfPlanes[j].length) ||
+                    (arrayOfPlanes[i].x + arrayOfPlanes[i].length >= arrayOfPlanes[j].x && arrayOfPlanes[i].x + arrayOfPlanes[i].length <= arrayOfPlanes[j].x)) {
+                    alert("crashed");
+                    if ((arrayOfPlanes[i].y >= arrayOfPlanes[j].y && arrayOfPlanes[i].y <= arrayOfPlanes[j].y + arrayOfPlanes[j].length) ||
+                        (arrayOfPlanes[i].y + arrayOfPlanes[i].length >= arrayOfPlanes[j].y && arrayOfPlanes[i].y + arrayOfPlanes[i].length <= arrayOfPlanes[j].y)) {
+                        alert("crashed");
+                        return [i, j];
+                    }
+                }
+            }
+        }
+        return [];
+    }
+
     function handleMouseUp(event) {
         var airplane = arrayOfPlanes[airplaneActiveIndex];
         var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
@@ -347,6 +364,11 @@
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
         tooManyAirplanes();
+        var collision = collisionDetection();
+        if (collision.length > 0) {
+            arrayOfPlanes.pop(collision[1]);
+            arrayOfPlanes.pop(collision[0]);
+        }
         stage.update(tickEvent);
     }
 
