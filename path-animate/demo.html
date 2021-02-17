@@ -7,34 +7,66 @@
 
     <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
     <script id="editable">
+    "use strict";
     var canvas;
     var stage;
     var stageWidth;
     var stageHeight;
     var framerate = 30;
-    var framesPerSecond = framerate / 1000;
+    var framesPerMillisecond = framerate / 1000;
+    var millisecondsPerFrame = 1000 / framerate;
+    var PIOneEighty = Math.PI / 180;
+    var oneEightyPI = 180 / Math.PI;
+    var maxAirplanes = 7;
+    var averageTimeToNextAirplane = 10000;
     var airplaneNextId;
-    var airplaneActiveIndex;
+    var totalAirplanesSeen = 0;
+    var activeAirplaneId = 0;
     var loader;
     var priorPoint;
     var priorMidPoint;
     var flightPathAttributes;
+    var airplaneAlert;
     var airplaneHighlight;
-    var arrayOfPlanes = [];
+    var arrayOfAirplanes = [];
+    var arrayOfLostAirplanes = [];
+    var nextAirplaneTime = -1;
     var airplaneSpriteSheet;
     var airplaneSprites = [
-        "a-jumbo",
-        "a-jet",
-        "a-md",
-        "a-prop",
-        "a-cub",
-        "a-mil"
+        {
+            frame: "a-jumbo",
+            speed: 1
+        },
+        {
+            frame: "a-jet",
+            speed: 1
+        },
+        {
+            frame: "a-md",
+            speed: 1
+        },
+        {
+            frame: "a-prop",
+            speed: 0.75
+        },
+        {
+            frame: "a-cub",
+            speed: 0.5
+        },
+        {
+            frame: "a-mil",
+            speed: 1.5
+        }
+    ];
+    var airplaneSeedTime = [
+        { count: 10, seedTime: 25000, max: 3, chopper: 0, boss: 0 },
+        { count: 20, seedTime: 12000, max: 5, chopper: 1, boss: 0 },
+        { count: 50, seedTime:  7500, max: 8, chopper: 2, boss: 1 }
     ];
 
     function init() {
         canvas = document.getElementById("myCanvas");
         airplaneNextId = 1;
-        airplaneActiveIndex = 0;
         flightPathAttributes = {
             lineColor: "#66ee55",
             lineWidth: 4
@@ -74,16 +106,43 @@
         true, "./");
     }
 
-    function getRandomPlaneSprite() {
-        return airplaneSprites[Math.floor(Math.random() * airplaneSprites.length)];
+    function getNextAirplane() {
+        if (totalAirplanesSeen > 0 && (totalAirplanesSeen % 10 == 0)) {
+            return {
+                frame: "chopper",
+                speed: 0.5
+            }
+        } else {
+            return airplaneSprites[Math.floor(Math.random() * airplaneSprites.length)];
+        }
     }
 
     function getChopperSprite() {
         return "chopper";
     }
 
+    function showGUI() {
+        var scoreField = new createjs.Text("0", "bold 48px Arial", "#FFFFFF");
+        scoreField.maxWidth = 50;
+        scoreField.name = "score";
+        scoreField.textAlign = "center";
+        scoreField.textBaseline = "middle";
+        scoreField.x = canvas.width * 0.92;
+        scoreField.y = canvas.height * 0.92;
+        stage.addChild(scoreField);
+    }
+
+    function updateScore() {
+        var scoreField = stage.getChildByName("score");
+        if (scoreField != null) {
+            scoreField.text = totalAirplanesSeen.toString();
+        }
+    }
+
     function createAirplane() {
-        var airplaneFrame = getChopperSprite(); // getRandomPlaneSprite();
+        var nextPlaneType = getNextAirplane();
+        var airplaneFrame = nextPlaneType.frame;
+        var airplaneSpeed = nextPlaneType.speed;
         var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
         if (airplane != null) {
             var airplaneSize = airplane.getBounds();
@@ -91,11 +150,19 @@
             airplane.height = airplaneSize.height;
             airplane.regX = airplane.width * 0.5;
             airplane.regY = airplane.height * 0.5;
-            airplane.angle = 0;
-            airplane.speed = 15;
+            airplane.rotation = 0;
+            airplane.speed = airplaneSpeed;
             airplane.id = airplaneNextId;
+            airplane.timeoutId = 0;
+            airplane.range = {
+                x: -1 * airplaneSize.width,
+                y: -1 * airplaneSize.height,
+                width: stageWidth + airplaneSize.width,
+                height: stageHeight + airplaneSize.height
+            };
             airplaneNextId += 1;
-            arrayOfPlanes.push(airplane);
+            totalAirplanesSeen ++;
+            arrayOfAirplanes.push(airplane);
 
             // Container will hold all airplane visual assets: sprite, track, highlight, effects.
             var airplaneContainer = new createjs.Container();
@@ -135,6 +202,10 @@
                         .drawCircle(0, 0, Math.max(this.width, this.height) * 0.6);
                     highlight.updateCache();
                 }
+                if (this.timeoutId > 0) {
+                    window.clearTimeout(this.timeoutId);
+                    this.timeoutId = 0;
+                }
             };
 
             airplane.setStartPosition = function () {
@@ -142,34 +213,92 @@
                 var finalPosition = {};
 
                 if (quadrant < 2) { // airplane coming from either top or below
-                    airplane.x = Math.floor(Math.random() * canvas.width);
+                    this.x = Math.floor(Math.random() * canvas.width);
                     finalPosition.x = Math.floor(Math.random() * canvas.width);
 
                     if (quadrant === 0) { // airplane coming from top
-                        airplane.y = -airplane.height;
-                        finalPosition.y = canvas.height + airplane.height;
+                        this.y = -1 * this.height;
+                        finalPosition.y = canvas.height + this.height;
                     } else { // airplane coming from below
-                        airplane.y = canvas.height + airplane.height;
-                        finalPosition.y = -airplane.height;
+                        this.y = canvas.height + this.height;
+                        finalPosition.y = -1 * this.height;
                     }
                 } else { // airplane coming from either right or left
-                    airplane.y = Math.floor(Math.random() * canvas.height);
+                    this.y = Math.floor(Math.random() * canvas.height);
                     finalPosition.y = Math.floor(Math.random() * canvas.height);
 
                     if (quadrant === 2) { // airplane coming from left
-                        airplane.x = -airplane.height;
-                        finalPosition.x = canvas.width + airplane.height;
+                        this.x = -1 * this.height;
+                        finalPosition.x = canvas.width + this.height;
                     } else { // airplane coming from right
-                        airplane.x = canvas.width + airplane.height;
-                        finalPosition.x = -airplane.height;
+                        this.x = canvas.width + this.height;
+                        finalPosition.x = -1 * this.height;
                     }
                 }
 
-                movePlane(airplane, finalPosition);
+                movePlane(this, finalPosition);
+
+                var drawingCanvas = getAirplaneFlightPathCanvas(this);
+                if (drawingCanvas != null) {
+                    drawingCanvas.graphics
+                        .setStrokeStyle(flightPathAttributes.lineWidth, 'round', 'round')
+                        .beginStroke(flightPathAttributes.lineColor)
+                        .moveTo(this.x, this.y)
+                        .lineTo(finalPosition.x, finalPosition.y);
+                }
             };
 
-            // position plane in its parent container
-            airplane.setStartPosition();
+            // time is running time since started. DeltaTime is milliseconds since last tick.
+            airplane.updatePosition = function(time, deltaTime) {
+                var airplaneContainer = this.parent;
+                if (airplaneContainer != null) {
+                    var highlight = airplaneContainer.getChildAt(1);
+                    var radians = this.rotation * PIOneEighty;
+                    var timeSpeedAdjustment = this.speed * (framesPerMillisecond / deltaTime);
+                    this.x += Math.sin(radians) * timeSpeedAdjustment;
+                    this.y -= Math.cos(radians) * timeSpeedAdjustment;
+                    highlight.x = this.x;
+                    highlight.y = this.y;
+                }
+                return this.isVisible();
+            };
+
+            airplane.isVisible = function() {
+                return this.x > this.range.x
+                    && this.x < this.range.width
+                    && this.y > this.range.y
+                    && this.y < this.range.height;
+            }
+
+            airplane.removeFromGame = function() {
+                var airplaneIndex = airplaneIndexFromId(this.id);
+                if (activeAirplaneId == this.id) {
+                    activeAirplaneId = 0;
+                }
+                if (this.timeoutId > 0) {
+                    window.clearTimeout(this.timeoutId);
+                    this.timeoutId = 0;
+                }
+                this.removeAllEventListeners();
+                var airplaneContainer = this.parent;
+                if (airplaneContainer != null) {
+                    var highlight = airplaneContainer.getChildByName("highlight");
+                    if (highlight != null) {
+                        createjs.Tween.removeTweens(highlight);
+                    }
+                    airplaneContainer.removeAllChildren();
+                    stage.removeChild(airplaneContainer);
+                }
+                if (airplaneIndex >= 0) {
+                    arrayOfAirplanes.splice(airplaneIndex, 1);
+                }
+            }
+
+            airplane.activate = function () {
+                this.setHighlight();
+                activeAirplaneId = this.id;
+                this.timeoutId = window.setTimeout(this.setAlert.bind(this), 3000);
+            };
 
             var graphics = new createjs.Graphics();
             var highlight = new createjs.Shape(graphics);
@@ -185,19 +314,35 @@
             airplaneContainer.addChild(highlight);
             airplaneContainer.addChild(airplane);
             stage.addChild(airplaneContainer);
+            airplane.addEventListener("click", airplane.activate.bind(airplane));
 
             airplane.setAlert();
             createjs.Tween.get(highlight, { loop: -1 })
                 .to({ alpha: 0 }, 1000, createjs.Ease.getElasticIn(2, 5))
                 .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
-            
-            airplane.activate = function () {
-                this.setHighlight();
-                window.setTimeout(this.setAlert.bind(this), 3000);
-            };
-            airplane.addEventListener("click", airplane.activate.bind(airplane));
+
+            // position plane in its parent container
+            airplane.setStartPosition();
+            updateScore();
         }
         return airplane;
+    }
+
+    function airplaneIndexFromId(airplaneId) {
+        for (var index = 0; index < arrayOfAirplanes.length; index ++) {
+            if (airplaneId == arrayOfAirplanes[index].id) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    function getActiveAirplane() {
+        var activeIndex = airplaneIndexFromId(activeAirplaneId);
+        if (activeIndex >= 0 && activeIndex < arrayOfAirplanes.length) {
+            return arrayOfAirplanes[activeIndex];
+        }
+        return null;
     }
 
     function getAirplaneFlightPathCanvas(airplane) {
@@ -208,11 +353,27 @@
     }
 
     function updateAirplanePosition(time, deltaTime) {
-        var airplane = arrayOfPlanes[airplaneActiveIndex];
-        var airplaneContainer = airplane.parent;
-        var highlight = airplaneContainer.getChildAt(1);
-        highlight.x = airplane.x;
-        highlight.y = airplane.y;
+        arrayOfAirplanes.forEach(function(airplane) {
+            if ( ! airplane.updatePosition(time, deltaTime)) {
+                arrayOfLostAirplanes.push(airplane);
+            }
+        });
+    }
+
+    function removeLostAirplanes() {
+        arrayOfLostAirplanes.forEach(function(airplane) {
+            airplane.removeFromGame();
+        });
+        arrayOfLostAirplanes = [];
+    }
+
+    function seedNextAirplane(currentTime, deltaTime) {
+        if (arrayOfAirplanes.length < maxAirplanes) {
+            if (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime)) {
+                createAirplane();
+                nextAirplaneTime = currentTime + (Math.random() * averageTimeToNextAirplane);
+            }
+        }
     }
 
     function createSprites() {
@@ -236,7 +397,8 @@
     function handleLoadComplete() {
         createSprites();
         createBackground();
-        createAirplane();
+        showGUI();
+        nextAirplaneTime = 0;
 
         stage.addEventListener("stagemousedown", handleMouseDown);
         stage.addEventListener("stagemouseup", handleMouseUp);
@@ -249,9 +411,12 @@
         if (!event.primary) { return; }
 
         // clear the prior drawing
-        var drawingCanvas = getAirplaneFlightPathCanvas(arrayOfPlanes[airplaneActiveIndex]);
-        drawingCanvas.graphics.clear();
-        drawingCanvas.flightPath = [];
+        var airplane = getActiveAirplane();
+        if (airplane != null) {
+            var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+            drawingCanvas.graphics.clear();
+            drawingCanvas.flightPath = [];
+        }
 
         // register the starting point and track the mouse
         priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
@@ -262,25 +427,30 @@
     function handleMouseMove(event) {
         if (!event.primary) { return; }
         
-        var drawingCanvas = getAirplaneFlightPathCanvas(arrayOfPlanes[airplaneActiveIndex]);
-        var mouseX = stage.mouseX;
-        var mouseY = stage.mouseY;
-        var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
+        var airplane = getActiveAirplane();
+        if (airplane != null) {
+            var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+            if (drawingCanvas != null) {
+                var mouseX = stage.mouseX;
+                var mouseY = stage.mouseY;
+                var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
 
-        drawingCanvas.graphics
-            .setStrokeStyle(flightPathAttributes.lineWidth, 'round', 'round')
-            .beginStroke(flightPathAttributes.lineColor)
-            .moveTo(midPt.x, midPt.y)
-            .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
+                drawingCanvas.graphics
+                    .setStrokeStyle(flightPathAttributes.lineWidth, 'round', 'round')
+                    .beginStroke(flightPathAttributes.lineColor)
+                    .moveTo(midPt.x, midPt.y)
+                    .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
-        priorPoint.x = mouseX;
-        priorPoint.y = mouseY;
-        drawingCanvas.flightPath.push(priorPoint);
+                priorPoint.x = mouseX;
+                priorPoint.y = mouseY;
+                drawingCanvas.flightPath.push(priorPoint);
 
-        priorMidPoint.x = midPt.x;
-        priorMidPoint.y = midPt.y;
+                priorMidPoint.x = midPt.x;
+                priorMidPoint.y = midPt.y;
 
-        stage.update();
+                stage.update();
+            }
+        }
     }
 
     function distanceBetweenPoints(xDist, yDist) {
@@ -293,39 +463,42 @@
         return Math.atan(yDist/xDist) * (180 / Math.PI);
     }
 
-    function movePlane(airplane, toPosition) {
-        var xDist = airplane.x - toPosition.x;
-        var yDist = airplane.y - toPosition.y;
+    function slopeOfLine(firstPoint, secondPoint) {
+        var dx = secondPoint.x - firstPoint.x;
+        var dy = secondPoint.y - firstPoint.y;
+        return Math.atan(dy / dx) * OneEightyPI;
+    }
 
-        // finds distance between two points using x and y distance of points
-        var dist = distanceBetweenPoints(xDist, yDist);
+    function airplaneAngleToPoint(airplane, toPoint) {
+        var angle = slopeOfLine(airplane, toPoint);
+    }
 
-        // finds correct angle for airplane
+    function angleOfAirplane(airplane, xDist, yDist) {
         var angle = angleOfObject(xDist, yDist);
         (xDist < 0) ? angle += 90 : angle -= 90;
-
         // adjusts to find smallest angle
-        var deltaAngle = airplane.angle - angle;
+        var deltaAngle = airplane.rotation - angle;
         if (deltaAngle > 180) {
             angle += 360;
         } else if (deltaAngle < -180) {
             angle -= 360;
         }
+        return angle;
+    }
 
-        createjs.Tween.get(airplane, {override: true})
-            .to({rotation: angle}, Math.abs(airplane.angle - angle) * airplane.speed)
-            .to({x: toPosition.x, y: toPosition.y}, dist * airplane.speed)
-            .call(airplane.setStartPosition, null, airplane);
+    function movePlane(airplane, toPosition) {
+        var xDist = airplane.x - toPosition.x;
+        var yDist = airplane.y - toPosition.y;
 
-        airplane.angle = angle;
+        // Update angle for airplane based on target point
+        airplane.rotation = angleOfAirplane(airplane, xDist, yDist);
     }
 
     function handleMouseUp(event) {
-        var airplane = arrayOfPlanes[airplaneActiveIndex];
-        var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
-
-        movePlane(airplane, { x: stage.mouseX, y: stage.mouseY });
-
+        var airplane = getActiveAirplane();
+        if (airplane != null) {
+            movePlane(airplane, { x: stage.mouseX, y: stage.mouseY });
+        }
         if (!event.primary) { return; }
         // stop tracking mouse
         stage.removeEventListener("stagemousemove", handleMouseMove);
@@ -334,6 +507,8 @@
     function onEnterFrame(tickEvent) {
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
+        removeLostAirplanes();
+        seedNextAirplane(tickEvent.time, deltaTime);
         stage.update(tickEvent);
     }
 
