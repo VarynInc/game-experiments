@@ -458,14 +458,9 @@
         var angle = slopeOfLine(airplane, toPoint);
     }
 
-    function movePlane(airplane, toPosition) {
-        var xDist = airplane.x - toPosition.x;
-        var yDist = airplane.y - toPosition.y;
-
-        // finds correct angle for airplane
+    function angleOfAirplane(airplane, xDist, yDist) {
         var angle = angleOfObject(xDist, yDist);
         (xDist < 0) ? angle += 90 : angle -= 90;
-
         // adjusts to find smallest angle
         var deltaAngle = airplane.rotation - angle;
         if (deltaAngle > 180) {
@@ -473,7 +468,15 @@
         } else if (deltaAngle < -180) {
             angle -= 360;
         }
-        airplane.rotation = angle;
+        return angle;
+    }
+
+    function movePlane(airplane, toPosition) {
+        var xDist = airplane.x - toPosition.x;
+        var yDist = airplane.y - toPosition.y;
+
+        // Update angle for airplane based on target point
+        airplane.rotation = angleOfAirplane(airplane, xDist, yDist);
     }
 
     function handleMouseUp(event) {
