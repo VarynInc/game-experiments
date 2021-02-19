@@ -18,6 +18,7 @@
     var PIOneEighty = Math.PI / 180;
     var oneEightyPI = 180 / Math.PI;
     var maxAirplanes = 7;
+    var minFlightTime = 2;
     var averageTimeToNextAirplane = 10000;
     var airplaneNextId;
     var totalAirplanesSeen = 0;
@@ -148,8 +149,10 @@
             airplane.regY = airplane.height * 0.5;
             airplane.rotation = 0;
             airplane.speed = airplaneSpeed;
+            airplane.type = airplaneFrame;
             airplane.id = airplaneNextId;
             airplane.timeoutId = 0;
+            airplane.flightTime = 0;
             airplane.range = {
                 x: -1 * airplaneSize.width,
                 y: -1 * airplaneSize.height,
@@ -233,6 +236,7 @@
                 }
 
                 movePlane(this, finalPosition);
+                this.updatePosition(0, framesPerMillisecond);
 
                 var drawingCanvas = getAirplaneFlightPathCanvas(this);
                 if (drawingCanvas != null) {
@@ -245,6 +249,7 @@
             };
 
             // time is running time since started. DeltaTime is milliseconds since last tick.
+            // Return true if we should continue updating this position.
             airplane.updatePosition = function(time, deltaTime) {
                 var airplaneContainer = this.parent;
                 if (airplaneContainer != null) {
@@ -255,8 +260,9 @@
                     this.y -= Math.cos(radians) * timeSpeedAdjustment;
                     highlight.x = this.x;
                     highlight.y = this.y;
+                    this.flightTime += deltaTime;
                 }
-                return this.isVisible();
+                return (this.flightTime < minFlightTime) || this.isVisible();
             };
 
             airplane.isVisible = function() {
@@ -295,6 +301,10 @@
                 activeAirplaneId = this.id;
                 this.timeoutId = window.setTimeout(this.setAlert.bind(this), 3000);
             };
+
+            airplane.toString = function() {
+                return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime;
+            }
 
             var graphics = new createjs.Graphics();
             var highlight = new createjs.Shape(graphics);
@@ -351,6 +361,7 @@
     function updateAirplanePosition(time, deltaTime) {
         arrayOfAirplanes.forEach(function(airplane) {
             if ( ! airplane.updatePosition(time, deltaTime)) {
+                console.log("Removing airplane " + airplane.toString());
                 arrayOfLostAirplanes.push(airplane);
             }
         });
