@@ -523,13 +523,10 @@
             for (var j = i + 1; j < arrayOfAirplanes.length; j++) {
                 var planeA = arrayOfAirplanes[i];
                 var planeB = arrayOfAirplanes[j];
-                if ((planeA.x >= planeB.x && planeA.x <= planeB.x + planeB.width) ||
-                    (planeA.x + planeA.width >= planeB.x && planeA.x + planeA.width <= planeB.x)) {
-                    if ((planeA.y >= planeB.y && planeA.y <= planeB.y + planeB.width) ||
-                        (planeA.y + planeA.width >= planeB.y && planeA.y + planeA.width <= planeB.y)) {
-                        alert("crashed");
-                        return [i, j];
-                    }
+                var distance = distanceBetweenPoints(planeA.x - planeB.x, planeA.y - planeB.y);
+                if (distance < planeA.radius + planeB.radius) {
+                    alert("crashed");
+                    return [i, j];
                 }
             }
         }
