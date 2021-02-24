@@ -146,6 +146,7 @@
             var airplaneSize = airplane.getBounds();
             airplane.width = airplaneSize.width;
             airplane.height = airplaneSize.height;
+            airplane.radius = Math.max(airplane.width, airplane.height) * 0.6;
             airplane.regX = airplane.width * 0.5;
             airplane.regY = airplane.height * 0.5;
             airplane.rotation = 0;
@@ -351,13 +352,13 @@
             graphics.setStrokeStyle(airplaneAlert.strokeWidth);
             graphics.beginStroke(airplaneAlert.strokeColor);
             graphicsFillCommand = graphics.beginFill(airplaneAlert.fillColor).command;
-            graphics.drawCircle(0, 0, Math.max(airplane.width, airplane.height) * 0.6);
+            graphics.drawCircle(0, 0, airplane.radius);
 
             // define the hit area for the sprite to be just a bit larger than the sprite radius
             var hitgraphics = new createjs.Graphics();
             var hitarea = new createjs.Shape(hitgraphics);
             hitgraphics.beginFill("#000000");
-            var radius = Math.max(airplane.width, airplane.height) * 0.65;
+            var radius = airplane.radius * 1.15; // make the hit area a little larger than the actual airplane radius
             hitgraphics.drawCircle(radius, radius, radius);
             airplane.hitArea = hitarea;
 
