@@ -33,6 +33,7 @@
     var arrayOfLostAirplanes = [];
     var nextAirplaneTime = -1;
     var airplaneSpriteSheet;
+    var interval;
     var airplaneSprites = [
         {
             frame: "a-jumbo",
@@ -437,6 +438,16 @@
         }
     }
 
+    function tooManyAirplanes() {
+        if (arrayOfAirplanes.length >= 5 && interval !== -1) {
+            clearInterval(interval);
+            interval = -1;
+        }
+        else if (interval === -1) {
+            interval = setInterval(createAirplane, 5000);
+        }
+    }
+
     function createSprites() {
         var spriteFrames = loader.getResult("game-spriteframes");
         spriteFrames.images = [loader.getResult("game-sprites")];
@@ -474,6 +485,7 @@
         return Math.atan(yDist/xDist) * (180 / Math.PI);
     }
 
+
     function slopeOfLine(firstPoint, secondPoint) {
         var dx = secondPoint.x - firstPoint.x;
         var dy = secondPoint.y - firstPoint.y;
@@ -497,19 +509,47 @@
         return angle;
     }
 
+
     function movePlane(airplane, toPosition) {
         var xDist = airplane.x - toPosition.x;
         var yDist = airplane.y - toPosition.y;
-
         // Update angle for airplane based on target point
         airplane.rotation = angleOfAirplane(airplane, xDist, yDist);
     }
+
+
+    function collisionDetection() {
+        for (var i = 0; i < arrayOfAirplanes.length - 1; i++) {
+            for (var j = i + 1; j < arrayOfAirplanes.length; j++) {
+                var planeA = arrayOfAirplanes[i];
+                var planeB = arrayOfAirplanes[j];
+                var distance = distanceBetweenPoints(planeA.x - planeB.x, planeA.y - planeB.y);
+                if (distance < planeA.radius + planeB.radius) {
+                    alert("crashed");
+                    return [i, j];
+                }
+            }
+        }
+        return [];
+    }
+
+    function handleMouseUp(event) {
+        var airplane = getActiveAirplane();
+        if (airplane != null) {
+            movePlane(airplane, { x: stage.mouseX, y: stage.mouseY });
+        }
+        if (!event.primary) { return; }
+        // stop tracking mouse
+        stage.removeEventListener("stagemousemove", handleMouseMove);
+    }
+
 
     function onEnterFrame(tickEvent) {
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
         removeLostAirplanes();
         seedNextAirplane(tickEvent.time, deltaTime);
+        collisionDetection();
         stage.update(tickEvent);
     }
 
