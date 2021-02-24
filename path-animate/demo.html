@@ -18,6 +18,7 @@
     var PIOneEighty = Math.PI / 180;
     var oneEightyPI = 180 / Math.PI;
     var maxAirplanes = 7;
+    var minFlightTime = 2;
     var averageTimeToNextAirplane = 10000;
     var airplaneNextId;
     var totalAirplanesSeen = 0;
@@ -118,10 +119,6 @@
         }
     }
 
-    function getChopperSprite() {
-        return "chopper";
-    }
-
     function showGUI() {
         var scoreField = new createjs.Text("0", "bold 48px Arial", "#FFFFFF");
         scoreField.maxWidth = 50;
@@ -153,8 +150,10 @@
             airplane.regY = airplane.height * 0.5;
             airplane.rotation = 0;
             airplane.speed = airplaneSpeed;
+            airplane.type = airplaneFrame;
             airplane.id = airplaneNextId;
             airplane.timeoutId = 0;
+            airplane.flightTime = 0;
             airplane.range = {
                 x: -1 * airplaneSize.width,
                 y: -1 * airplaneSize.height,
@@ -179,28 +178,20 @@
 
             // highlight
             airplane.setHighlight = function () {
+                if (this.graphicsFillCommand != null) {
+                    this.graphicsFillCommand.style = airplaneHighlight.fillColor;
+                }
                 var highlight = this.parent.getChildByName("highlight");
                 if (highlight != null) {
-                    var graphics = highlight.graphics;
-                    graphics.clear();
-                    graphics
-                        .setStrokeStyle(airplaneHighlight.strokeWidth)
-                        .beginStroke(airplaneHighlight.strokeColor)
-                        .beginFill(airplaneHighlight.fillColor)
-                        .drawCircle(0, 0, Math.max(this.width, this.height) * 0.6);
                     highlight.updateCache();
                 }
             };
             airplane.setAlert = function () {
+                if (this.graphicsFillCommand != null) {
+                    this.graphicsFillCommand.style = airplaneAlert.fillColor;
+                }
                 var highlight = this.parent.getChildByName("highlight");
                 if (highlight != null) {
-                    var graphics = highlight.graphics;
-                    graphics.clear();
-                    graphics
-                        .setStrokeStyle(airplaneAlert.strokeWidth)
-                        .beginStroke(airplaneAlert.strokeColor)
-                        .beginFill(airplaneAlert.fillColor)
-                        .drawCircle(0, 0, Math.max(this.width, this.height) * 0.6);
                     highlight.updateCache();
                 }
                 if (this.timeoutId > 0) {
@@ -238,18 +229,11 @@
                 }
 
                 movePlane(this, finalPosition);
-
-                var drawingCanvas = getAirplaneFlightPathCanvas(this);
-                if (drawingCanvas != null) {
-                    drawingCanvas.graphics
-                        .setStrokeStyle(flightPathAttributes.lineWidth, 'round', 'round')
-                        .beginStroke(flightPathAttributes.lineColor)
-                        .moveTo(this.x, this.y)
-                        .lineTo(finalPosition.x, finalPosition.y);
-                }
+                this.updatePosition(0, framesPerMillisecond);
             };
 
             // time is running time since started. DeltaTime is milliseconds since last tick.
+            // Return true if we should continue updating this position.
             airplane.updatePosition = function(time, deltaTime) {
                 var airplaneContainer = this.parent;
                 if (airplaneContainer != null) {
@@ -260,8 +244,9 @@
                     this.y -= Math.cos(radians) * timeSpeedAdjustment;
                     highlight.x = this.x;
                     highlight.y = this.y;
+                    this.flightTime += deltaTime;
                 }
-                return this.isVisible();
+                return (this.flightTime < minFlightTime) || this.isVisible();
             };
 
             airplane.isVisible = function() {
@@ -295,27 +280,101 @@
                 }
             }
 
-            airplane.activate = function () {
-                this.setHighlight();
-                activeAirplaneId = this.id;
-                this.timeoutId = window.setTimeout(this.setAlert.bind(this), 3000);
-            };
+            airplane.activate = function(event) {
+                if (!event.primary) { return; }
+
+                // clear the prior drawing on this airplane
+                var airplane = event.target;
+                if (airplane != null) {
+                    var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+                    drawingCanvas.graphics.clear();
+                    drawingCanvas.flightPath = [];
+
+                    airplane.setHighlight();
+                    activeAirplaneId = airplane.id;
+                    airplane.timeoutId = window.setTimeout(airplane.setAlert.bind(airplane), 3000);
+
+                    // register the starting point and track the mouse
+                    priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
+                    priorMidPoint = priorPoint.clone();
+                    airplane.addEventListener("pressmove", airplane.handleMouseMove);
+                    airplane.addEventListener("pressup", airplane.handleMouseUp);
+                }
+            }
+
+            airplane.handleMouseMove = function(event) {
+                if (!event.primary) { return; }
+                var airplane = event.target;
+                if (airplane != null) {
+                    var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+                    if (drawingCanvas != null) {
+                        var mouseX = stage.mouseX;
+                        var mouseY = stage.mouseY;
+                        var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
+
+                        drawingCanvas.graphics
+                            .setStrokeStyle(flightPathAttributes.lineWidth, 'round', 'round')
+                            .beginStroke(flightPathAttributes.lineColor)
+                            .moveTo(midPt.x, midPt.y)
+                            .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
+
+                        priorPoint.x = mouseX;
+                        priorPoint.y = mouseY;
+                        drawingCanvas.flightPath.push(priorPoint);
+
+                        priorMidPoint.x = midPt.x;
+                        priorMidPoint.y = midPt.y;
+                    }
+                }
+            }
+
+            airplane.handleMouseUp = function(event) {
+                if (!event.primary) { return; }
+
+                var airplane = event.target;
+                if (airplane != null) {
+                    movePlane(airplane, { x: stage.mouseX, y: stage.mouseY });
+                }
+                // stop tracking mouse
+                airplane.removeEventListener("mousemove", airplane.handleMouseMove);
+                airplane.removeEventListener("mouseup", airplane.handleMouseUp);
+            }
+
+
+            airplane.toString = function() {
+                return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime;
+            }
 
             var graphics = new createjs.Graphics();
+            var graphicsFillCommand;
             var highlight = new createjs.Shape(graphics);
+            graphics.setStrokeStyle(airplaneAlert.strokeWidth);
+            graphics.beginStroke(airplaneAlert.strokeColor);
+            graphicsFillCommand = graphics.beginFill(airplaneAlert.fillColor).command;
+            graphics.drawCircle(0, 0, Math.max(airplane.width, airplane.height) * 0.6);
+
+            // define the hit area for the sprite to be just a bit larger than the sprite radius
+            var hitgraphics = new createjs.Graphics();
+            var hitarea = new createjs.Shape(hitgraphics);
+            hitgraphics.beginFill("#000000");
+            var radius = Math.max(airplane.width, airplane.height) * 0.65;
+            hitgraphics.drawCircle(radius, radius, radius);
+            airplane.hitArea = hitarea;
+
             highlight.x = airplane.x;
             highlight.y = airplane.y;
             highlight.alpha = 0.5;
             highlight.visible = true;
             highlight.name = "highlight";
             highlight.cache(airplane.width * -1, airplane.height * -1, 2 * airplane.width, 2 * airplane.height);
+            airplane.graphicsFillCommand = graphicsFillCommand;
 
             // add DisplayObjects in drawing order
             airplaneContainer.addChild(drawingCanvas);
             airplaneContainer.addChild(highlight);
             airplaneContainer.addChild(airplane);
             stage.addChild(airplaneContainer);
-            airplane.addEventListener("click", airplane.activate.bind(airplane));
+            airplane.addEventListener("mousedown", airplane.activate.bind(airplane));
 
             airplane.setAlert();
             createjs.Tween.get(highlight, { loop: -1 })
@@ -356,6 +415,7 @@
     function updateAirplanePosition(time, deltaTime) {
         arrayOfAirplanes.forEach(function(airplane) {
             if ( ! airplane.updatePosition(time, deltaTime)) {
+                console.log("Removing airplane " + airplane.toString());
                 arrayOfLostAirplanes.push(airplane);
             }
         });
@@ -378,7 +438,7 @@
     }
 
     function tooManyAirplanes() {
-        if (arrayOfPlanes.length >= 5 && interval !== -1) {
+        if (arrayOfAirplanes.length >= 5 && interval !== -1) {
             clearInterval(interval);
             interval = -1;
         }
@@ -410,58 +470,8 @@
         createBackground();
         showGUI();
         nextAirplaneTime = 0;
-
-        stage.addEventListener("stagemousedown", handleMouseDown);
-        stage.addEventListener("stagemouseup", handleMouseUp);
         createjs.Ticker.addEventListener("tick", onEnterFrame);
-
         stage.update();
-    }
-
-    function handleMouseDown(event) {
-        if (!event.primary) { return; }
-
-        // clear the prior drawing
-        var airplane = getActiveAirplane();
-        if (airplane != null) {
-            var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
-            drawingCanvas.graphics.clear();
-            drawingCanvas.flightPath = [];
-        }
-
-        // register the starting point and track the mouse
-        priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
-        priorMidPoint = priorPoint.clone();
-        stage.addEventListener("stagemousemove", handleMouseMove);
-    }
-
-    function handleMouseMove(event) {
-        if (!event.primary) { return; }
-        
-        var airplane = getActiveAirplane();
-        if (airplane != null) {
-            var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
-            if (drawingCanvas != null) {
-                var mouseX = stage.mouseX;
-                var mouseY = stage.mouseY;
-                var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
-
-                drawingCanvas.graphics
-                    .setStrokeStyle(flightPathAttributes.lineWidth, 'round', 'round')
-                    .beginStroke(flightPathAttributes.lineColor)
-                    .moveTo(midPt.x, midPt.y)
-                    .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
-
-                priorPoint.x = mouseX;
-                priorPoint.y = mouseY;
-                drawingCanvas.flightPath.push(priorPoint);
-
-                priorMidPoint.x = midPt.x;
-                priorMidPoint.y = midPt.y;
-
-                stage.update();
-            }
-        }
     }
 
     function distanceBetweenPoints(xDist, yDist) {
@@ -474,7 +484,7 @@
         return Math.atan(yDist/xDist) * (180 / Math.PI);
     }
 
-<<<<<<< HEAD
+
     function slopeOfLine(firstPoint, secondPoint) {
         var dx = secondPoint.x - firstPoint.x;
         var dy = secondPoint.y - firstPoint.y;
@@ -506,14 +516,16 @@
         airplane.rotation = angleOfAirplane(airplane, xDist, yDist);
     }
 
+
     function collisionDetection() {
-        for (var i = 0; i < arrayOfPlanes.length - 1; i++) {
-            for (var j = i + 1; j < arrayOfPlanes.length; j++) {
-                if ((arrayOfPlanes[i].x >= arrayOfPlanes[j].x && arrayOfPlanes[i].x <= arrayOfPlanes[j].x + arrayOfPlanes[j].length) ||
-                    (arrayOfPlanes[i].x + arrayOfPlanes[i].length >= arrayOfPlanes[j].x && arrayOfPlanes[i].x + arrayOfPlanes[i].length <= arrayOfPlanes[j].x)) {
-                    alert("crashed");
-                    if ((arrayOfPlanes[i].y >= arrayOfPlanes[j].y && arrayOfPlanes[i].y <= arrayOfPlanes[j].y + arrayOfPlanes[j].length) ||
-                        (arrayOfPlanes[i].y + arrayOfPlanes[i].length >= arrayOfPlanes[j].y && arrayOfPlanes[i].y + arrayOfPlanes[i].length <= arrayOfPlanes[j].y)) {
+        for (var i = 0; i < arrayOfAirplanes.length - 1; i++) {
+            for (var j = i + 1; j < arrayOfAirplanes.length; j++) {
+                var planeA = arrayOfAirplanes[i];
+                var planeB = arrayOfAirplanes[j];
+                if ((planeA.x >= planeB.x && planeA.x <= planeB.x + planeB.width) ||
+                    (planeA.x + planeA.width >= planeB.x && planeA.x + planeA.width <= planeB.x)) {
+                    if ((planeA.y >= planeB.y && planeA.y <= planeB.y + planeB.width) ||
+                        (planeA.y + planeA.width >= planeB.y && planeA.y + planeA.width <= planeB.y)) {
                         alert("crashed");
                         return [i, j];
                     }
@@ -533,11 +545,13 @@
         stage.removeEventListener("stagemousemove", handleMouseMove);
     }
 
+
     function onEnterFrame(tickEvent) {
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
         removeLostAirplanes();
         seedNextAirplane(tickEvent.time, deltaTime);
+        collisionDetection();
         stage.update(tickEvent);
     }
 
