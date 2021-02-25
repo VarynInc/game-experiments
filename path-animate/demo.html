@@ -102,7 +102,6 @@
         stage = new createjs.Stage(canvas);
         stage.autoClear = true;
         stage.enableDOMEvents(true);
-        stage.enableMouseOver();
         stageWidth = stage.canvas.width;
         stageHeight = stage.canvas.height;
 
@@ -224,7 +223,6 @@
             var radius = airplane.radius * 1.15; // make the hit area a little larger than the actual airplane radius
             hitarea.setTransform(0, 0, 1, 1, 0, 0, 0, -1 * airplane.regX, -1 * airplane.regY);
             airplane.hitArea = hitarea;
-            airplane.cursor = "pointer";
 
             highlight.x = airplane.x;
             highlight.y = airplane.y;
