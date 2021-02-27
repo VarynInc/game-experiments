@@ -367,6 +367,9 @@
                 // clear the prior drawing on this airplane
                 var airplane = event.target;
                 if (airplane != null) {
+                    if (airplane.isCrashed) {
+                        return;
+                    }
                     var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
                     drawingCanvas.graphics.clear();
                     drawingCanvas.flightPath = [];
@@ -393,6 +396,9 @@
                 if (!event.primary) { return; }
                 var airplane = event.target;
                 if (airplane != null) {
+                    if (airplane.isCrashed) {
+                        return;
+                    }
                     var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
                     if (drawingCanvas != null) {
                         var mouseX = stage.mouseX;
@@ -420,16 +426,19 @@
 
                 var airplane = event.target;
                 if (airplane != null) {
+                    if (airplane.isCrashed) {
+                        return;
+                    }
                     movePlane(airplane, { x: stage.mouseX, y: stage.mouseY });
+                    // stop tracking mouse
+                    airplane.removeEventListener("pressmove", airplane.handleMouseMove);
+                    airplane.removeEventListener("pressup", airplane.handleMouseUp);
                 }
-                // stop tracking mouse
-                airplane.removeEventListener("mousemove", airplane.handleMouseMove);
-                airplane.removeEventListener("mouseup", airplane.handleMouseUp);
             }
 
 
             airplane.toString = function() {
-                return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime;
+                return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.isCrashed ? " CRASHED" : "");
             }
 
             airplane.addEventListener("mousedown", airplane.activate.bind(airplane));
