@@ -501,7 +501,6 @@
                 if (totalAirplanesSeen > airplaneSeedTime[currentSeedIndex].count && currentSeedIndex < airplaneSeedTime.length-1) {
                     currentSeedIndex += 1;
                 }
-                //nextAirplaneTime = currentTime + (Math.random() * averageTimeToNextAirplane);
                 nextAirplaneTime = currentTime + (Math.random() * airplaneSeedTime[currentSeedIndex].seedTime);
             }
 
