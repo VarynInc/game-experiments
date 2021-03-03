@@ -187,6 +187,7 @@
             airplane.crashTimeout = crashTimeToRemoval;
             airplane.flightTime = 0;
             airplane.isCrashed = false;
+            airplane.flightPathIndex = 0;
             airplane.graphicsFillCommand = null;
             airplane.graphicsStrokeCommand = null;
             airplane.range = {
@@ -309,14 +310,17 @@
             // time is running time since started. DeltaTime is milliseconds since last tick.
             // Return true if we should continue updating this position.
             airplane.updatePosition = function(time, deltaTime) {
+                var airplaneContainer = this.parent;
                 if (this.isCrashed) {
                     this.crashTimeout -= deltaTime;
+                    if (airplaneContainer != null) {
+                        airplaneContainer.alpha = this.crashTimeout / crashTimeToRemoval;
+                    }
                     if (this.crashTimeout <= 0) {
                         this.removeFromGame();
                     }
                     return true;
                 }
-                var airplaneContainer = this.parent;
                 if (airplaneContainer != null) {
                     var highlight = airplaneContainer.getChildAt(1);
                     var radians = this.rotation * PIOneEighty;
@@ -373,6 +377,7 @@
                     var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
                     drawingCanvas.graphics.clear();
                     drawingCanvas.flightPath = [];
+                    airplane.flightPathIndex = 0;
 
                     // Remove selected indicator from current selection.
                     if (activeAirplaneId != 0) {
