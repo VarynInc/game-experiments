@@ -527,7 +527,6 @@
                 }
                 nextAirplaneTime = currentTime + 1000 + (Math.random() * airplaneSeedTime[currentSeedIndex].seedTime);
             }
-
         }
     }
 
@@ -633,8 +632,8 @@
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
         removeLostAirplanes();
-        seedNextAirplane(tickEvent.time, deltaTime);
         collisionDetection();
+        seedNextAirplane(tickEvent.time, deltaTime);
         stage.update(tickEvent);
     }
 
