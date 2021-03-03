@@ -495,13 +495,6 @@
     }
 
     function seedNextAirplane(currentTime, deltaTime) {
-        /*
-        var airplaneSeedTime = [
-            { count: 10, seedTime: 25000, max: 3, chopper: 0, boss: 0 },
-            { count: 20, seedTime: 12000, max: 5, chopper: 1, boss: 0 },
-            { count: 50, seedTime:  7500, max: 8, chopper: 2, boss: 1 }
-        ];
-        */
         if (arrayOfAirplanes.length < airplaneSeedTime[currentSeedIndex].max) {
             if (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime)) {
                 createAirplane();
