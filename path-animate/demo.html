@@ -322,6 +322,25 @@
                     return true;
                 }
                 if (airplaneContainer != null) {
+                    var drawingCanvas = this.getAirplaneFlightPathCanvas();
+                    if (drawingCanvas != null) {
+                        var flightPath = drawingCanvas.flightPath;
+                        if (flightPath.length > 0) {
+                            if (this.flightPathIndex >= flightPath.length) {
+                                // ran out the path, clear it
+                                this.flightPathIndex = 0;
+                                drawingCanvas.flightPath = [];
+                                drawingCanvas.graphics.clear();
+                            } else {
+                                // we have a flight path to trace.
+                                // examine each point until we find a point in front in current direction, +/- 15 degrees
+                                // if no point, flight path is bad, clear it
+                                while (this.flightPathIndex < flightPath.length) {
+                                    this.flightPathIndex ++;
+                                }
+                            }
+                        }
+                    }
                     var highlight = airplaneContainer.getChildAt(1);
                     var radians = this.rotation * PIOneEighty;
                     var timeSpeedAdjustment = this.speed * (framesPerMillisecond / deltaTime);
