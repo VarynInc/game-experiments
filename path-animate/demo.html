@@ -69,6 +69,7 @@
         { count: 20, seedTime: 12000, max: 5, chopper: 1, boss: 0 },
         { count: 50, seedTime:  7500, max: 8, chopper: 2, boss: 1 }
     ];
+    var currentSeedIndex = 0;
 
     function init() {
         canvas = document.getElementById("myCanvas");
@@ -518,11 +519,15 @@
     }
 
     function seedNextAirplane(currentTime, deltaTime) {
-        if (arrayOfAirplanes.length < maxAirplanes) {
+        if (arrayOfAirplanes.length < airplaneSeedTime[currentSeedIndex].max) {
             if (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime)) {
                 createAirplane();
-                nextAirplaneTime = currentTime + (Math.random() * averageTimeToNextAirplane);
+                if (totalAirplanesSeen > airplaneSeedTime[currentSeedIndex].count && currentSeedIndex < airplaneSeedTime.length-1) {
+                    currentSeedIndex += 1;
+                }
+                nextAirplaneTime = currentTime + 1000 + (Math.random() * airplaneSeedTime[currentSeedIndex].seedTime);
             }
+
         }
     }
 
