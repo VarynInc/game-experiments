@@ -6,6 +6,7 @@
     <title>Demo: Animate sprite</title>
 
     <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script src="./flightData.js"></script>
     <script id="editable">
     "use strict";
     var canvas;
@@ -173,17 +174,20 @@
         var airplaneFrame = nextPlaneType.frame;
         var airplaneSpeed = nextPlaneType.speed;
         var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
+        var longestSide = 0;
         if (airplane != null) {
             var airplaneSize = airplane.getBounds();
             airplane.width = airplaneSize.width;
             airplane.height = airplaneSize.height;
-            airplane.radius = Math.max(airplane.width, airplane.height) * 0.6;
+            longestSide = Math.max(airplane.width, airplane.height);
+            airplane.radius = longestSide * 0.6;
             airplane.regX = airplane.width * 0.5;
             airplane.regY = airplane.height * 0.5;
             airplane.rotation = 0;
             airplane.speed = airplaneSpeed;
             airplane.type = airplaneFrame;
             airplane.id = airplaneNextId;
+            airplane.flightData = flightData.getNextFlightNumber(airplaneFrame)
             airplane.timeoutId = 0;
             airplane.crashTimeout = crashTimeToRemoval;
             airplane.flightTime = 0;
@@ -231,13 +235,15 @@
             highlight.alpha = 0.5;
             highlight.visible = true;
             highlight.name = "highlight";
-            highlight.cache(airplane.width * -1, airplane.height * -1, 2 * airplane.width, 2 * airplane.height);
+            highlight.cache(longestSide * -1, longestSide * -1, 2 * longestSide, 2 * longestSide);
 
             // add DisplayObjects in drawing order
             airplaneContainer.addChild(drawingCanvas);
             airplaneContainer.addChild(highlight);
             airplaneContainer.addChild(airplane);
             stage.addChild(airplaneContainer);
+
+            showFlightStatus(airplane);
 
             // highlight
             airplane.changeHighlightColor = function (newFillColor, newStrokeColor) {
@@ -275,25 +281,31 @@
                 var quadrant = Math.floor(Math.random() * 4); // determines which side airplane will enter from
                 var finalPosition = {};
 
-                if (quadrant < 2) { // airplane coming from either top or below
+                if (quadrant < 2) {
+                    // airplane coming from either top or below
                     this.x = Math.floor(Math.random() * canvas.width);
                     finalPosition.x = Math.floor(Math.random() * canvas.width);
 
-                    if (quadrant === 0) { // airplane coming from top
+                    if (quadrant === 0) {
+                        // airplane coming from top
                         this.y = -1 * this.height;
                         finalPosition.y = canvas.height + this.height;
-                    } else { // airplane coming from below
+                    } else {
+                        // airplane coming from below
                         this.y = canvas.height + this.height;
                         finalPosition.y = -1 * this.height;
                     }
-                } else { // airplane coming from either right or left
+                } else {
+                    // airplane coming from either right or left
                     this.y = Math.floor(Math.random() * canvas.height);
                     finalPosition.y = Math.floor(Math.random() * canvas.height);
 
-                    if (quadrant === 2) { // airplane coming from left
+                    if (quadrant === 2) {
+                        // airplane coming from left
                         this.x = -1 * this.height;
                         finalPosition.x = canvas.width + this.height;
-                    } else { // airplane coming from right
+                    } else {
+                        // airplane coming from right
                         this.x = canvas.width + this.height;
                         finalPosition.x = -1 * this.height;
                     }
@@ -323,7 +335,7 @@
                     return true;
                 }
                 if (airplaneContainer != null) {
-                    var drawingCanvas = this.getAirplaneFlightPathCanvas();
+                    var drawingCanvas = getAirplaneFlightPathCanvas(this);
                     if (drawingCanvas != null) {
                         var flightPath = drawingCanvas.flightPath;
                         if (flightPath.length > 0) {
@@ -637,13 +649,19 @@
         stage.update(tickEvent);
     }
 
+    function showFlightStatus(airplane) {
+        var statusElement = document.getElementById("statusMessage");
+        if (statusElement != null) {
+            statusElement.innerText = "Now entering your air space: " + airplane.flightData.carrier + " flight " + airplane.flightData.flightNumber + " departed from " + airplane.flightData.departing;
+        }
+    }
     </script>
 </head>
 
 <body onload="init();">
     <header class="EaselJS">
         <h1>Demo</h1>
-        <p>Draw and animate</p>
+        <p id="statusMessage">Click and drag to set a path for an airplane</p>
     </header>
     <canvas id="myCanvas" width="960" height="400"></canvas>
 </body>
