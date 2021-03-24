@@ -189,7 +189,8 @@
             airplane.updateInterval = longestSide * 0.5;
             airplane.type = airplaneFrame;
             airplane.id = airplaneNextId;
-            airplane.flightData = flightData.getNextFlightNumber(airplaneFrame)
+            airplane.flightData = flightData.getNextFlightNumber(airplaneFrame);
+            airplane.flightData.scheduledArrival = new Date(Date.now() + (1000 * 60 * 60));
             airplane.timeoutId = 0;
             airplane.crashTimeout = crashTimeToRemoval;
             airplane.flightTime = 0;
@@ -244,8 +245,6 @@
             airplaneContainer.addChild(highlight);
             airplaneContainer.addChild(airplane);
             stage.addChild(airplaneContainer);
-
-            showFlightStatus(airplane);
 
             // highlight
             airplane.changeHighlightColor = function (newFillColor, newStrokeColor) {
@@ -508,6 +507,7 @@
             // position plane in its parent container
             airplane.setStartPosition();
             updateScore();
+            showFlightStatus(airplane);
         }
         return airplane;
     }
@@ -686,11 +686,104 @@
         stage.update(tickEvent);
     }
 
+    function showNewAirplaneAlert(airplane) {
+        var alertContainer = createAlertContainer();
+        var child;
+        var airplaneFrame = airplane.currentAnimation;
+        // longestSide = Math.max(airplane.width, airplane.height);
+        child = alertContainer.getChildByName("sprite");
+        if (child != null) {
+            child.gotoAndStop(airplaneFrame);
+            child.regX = airplane.width * 0.5;
+            child.regY = 0;
+            child.scale = 18 / airplane.height;
+        }
+        child = alertContainer.getChildByName("field1");
+        if (child != null) {
+            child.text = airplane.flightData.carrier + " " + airplane.flightData.flightNumber;
+        }
+        child = alertContainer.getChildByName("field2");
+        if (child != null) {
+            child.text = "D: " + airplane.flightData.departing;
+        }
+        child = alertContainer.getChildByName("field3");
+        if (child != null) {
+            var minutes = airplane.flightData.scheduledArrival.getMinutes();
+            child.text = "A: " + airplane.flightData.scheduledArrival.getHours() + ":" + (minutes < 10 ? "0" + minutes : minutes);
+        }
+        alertContainer.x = airplane.x;
+        if (alertContainer.x < 0) {
+            alertContainer.x = 0;
+        } else if (alertContainer.x > stageWidth) {
+            alertContainer.x = stageWidth - alertContainer.width;
+        }
+        alertContainer.y = airplane.y;
+        if (alertContainer.y < 0) {
+            alertContainer.y = 0;
+        } else if (alertContainer.y > stageHeight) {
+            alertContainer.y = stageHeight - alertContainer.height;
+        }
+    }
+
+    function createAlertContainer() {
+        var height = 60;
+        var width = 60;
+        var container = new createjs.Container();
+        var graphics = new createjs.Graphics();
+        var background = new createjs.Shape(graphics);
+        graphics.setStrokeStyle(airplaneAlert.strokeWidth);
+        graphics.beginStroke(airplaneAlert.strokeColor);
+        graphics.beginFill(airplaneAlert.fillColor);
+        graphics.drawRoundRect(0, 0, width, height, 8);
+        background.alpha = 0.5;
+        container.addChild(background);
+        container.width = width;
+        container.height = height;
+
+        var airplaneSprite = new createjs.Sprite(airplaneSpriteSheet);
+        airplaneSprite.name = "sprite";
+        airplaneSprite.x = width * 0.5;
+        airplaneSprite.y = height * 0.02;
+        container.addChild(airplaneSprite);
+
+        var textField = new createjs.Text("AZ 1234", "bold 10px Arial", "#FFFFFF");
+        textField.maxWidth = width * 0.98;
+        textField.name = "field1";
+        textField.textAlign = "center";
+        textField.textBaseline = "middle";
+        textField.x = width * 0.5;
+        textField.y = height * 0.5;
+        container.addChild(textField);
+
+        textField = new createjs.Text("D: PDX", "bold 10px Arial", "#FFFFFF");
+        textField.maxWidth = width * 0.98;
+        textField.name = "field2";
+        textField.textAlign = "center";
+        textField.textBaseline = "middle";
+        textField.x = width * 0.5;
+        textField.y = height * 0.68;
+        container.addChild(textField);
+
+        textField = new createjs.Text("A: 22:55", "bold 10px Arial", "#FFFFFF");
+        textField.maxWidth = width * 0.98;
+        textField.name = "field3";
+        textField.textAlign = "center";
+        textField.textBaseline = "middle";
+        textField.x = width * 0.5;
+        textField.y = height * 0.86;
+        container.addChild(textField);
+
+        stage.addChild(container);
+
+        return container;
+    }
+
     function showFlightStatus(airplane) {
         var statusElement = document.getElementById("statusMessage");
         if (statusElement != null) {
             statusElement.innerText = "Now entering your air space: " + airplane.flightData.carrier + " flight " + airplane.flightData.flightNumber + " departed from " + airplane.flightData.departing;
         }
+        showNewAirplaneAlert(airplane);
     }
     </script>
 </head>
