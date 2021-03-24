@@ -18,8 +18,8 @@
     var millisecondsPerFrame = 1000 / framerate;
     var PIOneEighty = Math.PI / 180;
     var oneEightyPI = 180 / Math.PI;
-    var maxAirplanes = 8;
     var minFlightTime = 2;
+    var maxAnglePerFrame = (360 / framerate) * 2;
     var crashTimeToRemoval = 5;
     var airplaneNextId;
     var totalAirplanesSeen = 0;
@@ -194,7 +194,6 @@
             airplane.crashTimeout = crashTimeToRemoval;
             airplane.flightTime = 0;
             airplane.isCrashed = false;
-            airplane.flightPathIndex = 0;
             airplane.graphicsFillCommand = null;
             airplane.graphicsStrokeCommand = null;
             airplane.range = {
@@ -218,6 +217,7 @@
             var drawingCanvas = new createjs.Shape();
             drawingCanvas.name = "flight-path";
             drawingCanvas.flightPath = [];
+            airplane.flightPathIndex = 0;
 
             var graphics = new createjs.Graphics();
             var highlight = new createjs.Shape(graphics);
@@ -343,28 +343,36 @@
                         if (flightPath.length > 0) {
                             if (this.flightPathIndex >= flightPath.length) {
                                 // ran out the path, clear it
-                                this.flightPathIndex = 0;
-                                drawingCanvas.flightPath = [];
                                 drawingCanvas.graphics.clear();
+                                drawingCanvas.flightPath = [];
+                                this.flightPathIndex = 0;
                             } else {
                                 // we have a flight path to trace.
                                 // examine each point until we find a point in front in current direction, +/- 15 degrees
                                 // if no point, flight path is bad, clear it
-                                var nextPoint;
-                                var angleToNextPoint;
+                                var nextPoint = null;
                                 var d;
                                 while (this.flightPathIndex < flightPath.length) {
                                     nextPoint = flightPath[this.flightPathIndex];
-                                    // TODO: if angle is too great then flight path is no good, clear it
-                                    angleToNextPoint = slopeOfLine(nextPoint, airplane);
                                     d = distanceBetweenPoints(nextPoint, airplane);
                                     if (d < this.updateInterval) {
+                                        // distance to next point is too small or we passed it, ignore it and get the next point
                                         this.flightPathIndex++;
                                     } else {
                                         break;
                                     }
                                 }
-                                this.movePlane(nextPoint);
+                                if (nextPoint != null) {
+                                    var deltaAngle = Math.abs(airplane.rotation - angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y));
+                                    if (deltaAngle <= maxAnglePerFrame) {
+                                        this.movePlane(nextPoint);
+                                    } else {
+                                        // if new angle is too great then flight path is no good, clear it
+                                        drawingCanvas.graphics.clear();
+                                        drawingCanvas.flightPath = [];
+                                        this.flightPathIndex = 0;
+                                    }
+                                }
                             }
                         }
                     }
@@ -483,10 +491,8 @@
             }
 
             airplane.movePlane = function (toPosition) {
-                var xDist = this.x - toPosition.x;
-                var yDist = this.y - toPosition.y;
-                // Update angle for airplane based on target point
-                this.rotation = angleOfAirplane(this, xDist, yDist);
+                // Update rotation of airplane based on target point
+                this.rotation = angleOfAirplane(this, this.x - toPosition.x, this.y - toPosition.y);
             }
 
             airplane.toString = function() {
@@ -610,17 +616,24 @@
     }
 
     function angleOfObject(xDist, yDist) {
-        return Math.atan(yDist/xDist) * oneEightyPI;
+        return Math.atan(yDist / xDist) * oneEightyPI;
     }
 
     function slopeOfLine(firstPoint, secondPoint) {
-        var dx = secondPoint.x - firstPoint.x;
-        var dy = secondPoint.y - firstPoint.y;
-        return Math.atan(dy / dx) * oneEightyPI;
+        return angleOfObject(secondPoint.x - firstPoint.x, secondPoint.y - firstPoint.y);
     }
 
     function airplaneAngleToPoint(airplane, toPoint) {
         var angle = slopeOfLine(airplane, toPoint);
+        // var xDist = toPoint.x = airplane.x;
+        // (xDist < 0) ? angle += 90 : angle -= 90;
+        // var deltaAngle = airplane.rotation - angle;
+        // if (deltaAngle > 180) {
+        //     angle += 360;
+        // } else if (deltaAngle < -180) {
+        //     angle -= 360;
+        // }
+        return angle;
     }
 
     function angleOfAirplane(airplane, xDist, yDist) {
