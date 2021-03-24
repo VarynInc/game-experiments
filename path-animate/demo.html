@@ -125,8 +125,8 @@
     }
 
     function getNextAirplane() {
-        if (chopperSpawns.indexOf(totalAirplanesSeen) !== -1) {
-            chopperSpawns.splice(chopperSpawns.indexOf(totalAirplanesSeen), 1);
+        if (chopperSpawns.indexOf(totalAirplanesSeen+1) !== -1) {
+            chopperSpawns.splice(chopperSpawns.indexOf(totalAirplanesSeen+1), 1);
             return {
                 frame: "chopper",
                 speed: 0.5
@@ -559,10 +559,10 @@
             previousCount = airplaneSeedTime[currentSeedIndex-1].count;
         }
         for (var i = 0; i < currentSeed.chopper; i++) {
-            var count = Math.floor(Math.random() * (currentSeed.count - previousCount) + previousCount);
+            var count = Math.floor(Math.random() * (currentSeed.count - previousCount) + previousCount)+1;
             while (chopperSpawns.indexOf(count) !== -1) {
                 // makes sure no dupicate numbers in spawningArray
-                count = Math.floor(Math.random() * (currentSeed.count - previousCount) + previousCount);
+                count = Math.floor(Math.random() * (currentSeed.count - previousCount) + previousCount)+1;
             }
             chopperSpawns.push(count);
         }
@@ -572,7 +572,7 @@
         if (arrayOfAirplanes.length < airplaneSeedTime[currentSeedIndex].max) {
             if (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime)) {
                 createAirplane();
-                if (totalAirplanesSeen > airplaneSeedTime[currentSeedIndex].count && currentSeedIndex < airplaneSeedTime.length-1) {
+                if (totalAirplanesSeen >= airplaneSeedTime[currentSeedIndex].count && currentSeedIndex < airplaneSeedTime.length-1) {
                     currentSeedIndex += 1;
                     generateChopperSpawns();
                 }
