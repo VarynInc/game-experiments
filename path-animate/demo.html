@@ -623,19 +623,6 @@
         return angleOfObject(secondPoint.x - firstPoint.x, secondPoint.y - firstPoint.y);
     }
 
-    function airplaneAngleToPoint(airplane, toPoint) {
-        var angle = slopeOfLine(airplane, toPoint);
-        // var xDist = toPoint.x = airplane.x;
-        // (xDist < 0) ? angle += 90 : angle -= 90;
-        // var deltaAngle = airplane.rotation - angle;
-        // if (deltaAngle > 180) {
-        //     angle += 360;
-        // } else if (deltaAngle < -180) {
-        //     angle -= 360;
-        // }
-        return angle;
-    }
-
     function angleOfAirplane(airplane, xDist, yDist) {
         var angle = angleOfObject(xDist, yDist);
         (xDist < 0) ? angle += 90 : angle -= 90;
