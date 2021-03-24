@@ -35,6 +35,7 @@
     var airplaneWarning;
     var arrayOfAirplanes = [];
     var arrayOfLostAirplanes = [];
+    var arrayOfAlertContainers = [];
     var nextAirplaneTime = -1;
     var airplaneSpriteSheet;
     var interval;
@@ -673,8 +674,22 @@
         stage.update(tickEvent);
     }
 
+    function getFreeAlertContainer() {
+        var freeAlertContainer = null;
+        for (var index = 0; index < arrayOfAlertContainers.length; index ++) {
+            if (arrayOfAlertContainers[index].visible == false) {
+                freeAlertContainer = arrayOfAlertContainers[index];
+                break;
+            }
+        }
+        if (freeAlertContainer == null) {
+            freeAlertContainer = createAlertContainer();
+        }
+        return freeAlertContainer;
+    }
+
     function showNewAirplaneAlert(airplane) {
-        var alertContainer = createAlertContainer();
+        var alertContainer = getFreeAlertContainer();
         var child;
         var airplaneFrame = airplane.currentAnimation;
         // longestSide = Math.max(airplane.width, airplane.height);
@@ -710,12 +725,16 @@
         } else if (alertContainer.y > stageHeight) {
             alertContainer.y = stageHeight - alertContainer.height;
         }
+        alertContainer.visible = true;
+        window.setTimeout(function() {
+            alertContainer.visible = false;
+        }, 5000);
     }
 
     function createAlertContainer() {
         var height = 60;
         var width = 60;
-        var container = new createjs.Container();
+        var alertContainer = new createjs.Container();
         var graphics = new createjs.Graphics();
         var background = new createjs.Shape(graphics);
         graphics.setStrokeStyle(airplaneAlert.strokeWidth);
@@ -723,46 +742,47 @@
         graphics.beginFill(airplaneAlert.fillColor);
         graphics.drawRoundRect(0, 0, width, height, 8);
         background.alpha = 0.5;
-        container.addChild(background);
-        container.width = width;
-        container.height = height;
+        alertContainer.addChild(background);
+        alertContainer.width = width;
+        alertContainer.height = height;
 
         var airplaneSprite = new createjs.Sprite(airplaneSpriteSheet);
         airplaneSprite.name = "sprite";
         airplaneSprite.x = width * 0.5;
         airplaneSprite.y = height * 0.02;
-        container.addChild(airplaneSprite);
+        alertContainer.addChild(airplaneSprite);
 
-        var textField = new createjs.Text("AZ 1234", "bold 10px Arial", "#FFFFFF");
+        var textField = new createjs.Text("AA 1111", "bold 10px Arial", "#FFFFFF");
         textField.maxWidth = width * 0.98;
         textField.name = "field1";
         textField.textAlign = "center";
         textField.textBaseline = "middle";
         textField.x = width * 0.5;
         textField.y = height * 0.5;
-        container.addChild(textField);
+        alertContainer.addChild(textField);
 
-        textField = new createjs.Text("D: PDX", "bold 10px Arial", "#FFFFFF");
+        textField = new createjs.Text("D: AAA", "bold 10px Arial", "#FFFFFF");
         textField.maxWidth = width * 0.98;
         textField.name = "field2";
         textField.textAlign = "center";
         textField.textBaseline = "middle";
         textField.x = width * 0.5;
         textField.y = height * 0.68;
-        container.addChild(textField);
+        alertContainer.addChild(textField);
 
-        textField = new createjs.Text("A: 22:55", "bold 10px Arial", "#FFFFFF");
+        textField = new createjs.Text("A: 99:99", "bold 10px Arial", "#FFFFFF");
         textField.maxWidth = width * 0.98;
         textField.name = "field3";
         textField.textAlign = "center";
         textField.textBaseline = "middle";
         textField.x = width * 0.5;
         textField.y = height * 0.86;
-        container.addChild(textField);
+        alertContainer.addChild(textField);
 
-        stage.addChild(container);
+        arrayOfAlertContainers.push(alertContainer);
+        stage.addChild(alertContainer);
 
-        return container;
+        return alertContainer;
     }
 
     function showFlightStatus(airplane) {
