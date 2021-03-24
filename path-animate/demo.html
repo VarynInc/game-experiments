@@ -714,21 +714,21 @@
             child.text = "A: " + airplane.flightData.scheduledArrival.getHours() + ":" + (minutes < 10 ? "0" + minutes : minutes);
         }
         alertContainer.x = airplane.x;
-        if (alertContainer.x < 0) {
+        if (alertContainer.x < alertContainer.width) {
             alertContainer.x = 0;
-        } else if (alertContainer.x > stageWidth) {
+        } else if (alertContainer.x > (stageWidth - alertContainer.width)) {
             alertContainer.x = stageWidth - alertContainer.width;
         }
         alertContainer.y = airplane.y;
-        if (alertContainer.y < 0) {
+        if (alertContainer.y < alertContainer.height) {
             alertContainer.y = 0;
-        } else if (alertContainer.y > stageHeight) {
+        } else if (alertContainer.y > (stageHeight - alertContainer.height)) {
             alertContainer.y = stageHeight - alertContainer.height;
         }
         alertContainer.visible = true;
         window.setTimeout(function() {
             alertContainer.visible = false;
-        }, 5000);
+        }, 7000);
     }
 
     function createAlertContainer() {
