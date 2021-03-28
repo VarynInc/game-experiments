@@ -196,6 +196,7 @@
             airplane.crashTimeout = crashTimeToRemoval;
             airplane.flightTime = 0;
             airplane.isCrashed = false;
+            airplane.alertContainer = null;
             airplane.graphicsFillCommand = null;
             airplane.graphicsStrokeCommand = null;
             airplane.range = {
@@ -318,6 +319,12 @@
 
             airplane.setCrashed = function() {
                 this.isCrashed = true;
+                if (this.alertContainer != null) {
+                    window.clearTimeout(this.alertTimeout);
+                    this.alertTimeout = 0;
+                    this.alertContainer.visible = false;
+                    this.alertContainer = null;
+                }
                 this.crashTimeout = crashTimeToRemoval;
                 this.setAlert();
             }
@@ -684,6 +691,9 @@
         }
         if (freeAlertContainer == null) {
             freeAlertContainer = createAlertContainer();
+            console.log("Getting new alert, total " + arrayOfAlertContainers.length);
+        } else {
+            console.log("reusing alert, total " + arrayOfAlertContainers.length);
         }
         return freeAlertContainer;
     }
@@ -726,7 +736,10 @@
             alertContainer.y = stageHeight - alertContainer.height;
         }
         alertContainer.visible = true;
-        window.setTimeout(function() {
+        airplane.alertContainer = alertContainer;
+        airplane.alertTimeout = window.setTimeout(function() {
+            airplane.alertContainer = null;
+            airplane.alertTimeout = 0;
             alertContainer.visible = false;
         }, 7000);
     }
