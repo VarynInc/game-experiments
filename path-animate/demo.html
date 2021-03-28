@@ -189,6 +189,9 @@
 
     function createAirplane() {
         var nextPlaneType = getNextAirplane();
+        if (nextPlaneType == null) {
+            console.log("Error here");
+        }
         var airplaneFrame = nextPlaneType.frame;
         var airplaneSpeed = nextPlaneType.speed;
         var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
@@ -591,8 +594,8 @@
             airplaneSpawns[i] = 0;
         }
         if (currentSeed.chopperCount > 0) {
-            duplicateSpawnCounter = 10;
             for (i = 0; i < currentSeed.chopperCount; i++) {
+                duplicateSpawnCounter = 10;
                 do {
                     nextSpawn = Math.floor(Math.random() * totalSpawns);
                     // makes sure we haven't already assigned this spawn
@@ -606,13 +609,13 @@
             }
         }
         if (currentSeed.militaryCount > 0) {
-            duplicateSpawnCounter = 10;
             for (i = 0; i < currentSeed.militaryCount; i++) {
+                duplicateSpawnCounter = 10;
                 do {
                     nextSpawn = Math.floor(Math.random() * totalSpawns);
                     // makes sure we haven't already assigned this spawn
                     if (airplaneSpawns[nextSpawn] === 0) {
-                        airplaneSpawns[nextSpawn] = 1;
+                        airplaneSpawns[nextSpawn] = 2;
                         duplicateSpawnCounter = 0;
                     } else {
                         duplicateSpawnCounter --;
@@ -634,7 +637,9 @@
             if (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime)) {
                 createAirplane();
                 if (totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count && currentSeedIndex < configuration.airplaneSeedTime.length-1) {
-                    currentSeedIndex += 1;
+                    if (currentSeedIndex < (configuration.airplaneSeedTime.length - 1)) {
+                        currentSeedIndex += 1;
+                    }
                     generateSpawns();
                 }
                 nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
@@ -747,9 +752,6 @@
         }
         if (freeAlertContainer == null) {
             freeAlertContainer = createAlertContainer();
-            console.log("Getting new alert, total " + arrayOfAlertContainers.length);
-        } else {
-            console.log("reusing alert, total " + arrayOfAlertContainers.length);
         }
         return freeAlertContainer;
     }
