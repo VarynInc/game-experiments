@@ -102,15 +102,14 @@
             speed: 1.5
         }
         configuration.airplaneSeedTime = [
-            { count:  8, seedTime: 25000, max: 3, militaryCount: 0, chopperCount: 0, boss: 0 },
-            { count: 10, seedTime: 12000, max: 5, militaryCount: 0, chopperCount: 0, boss: 0 },
-            { count: 15, seedTime: 17000, max: 5, militaryCount: 0, chopperCount: 1, boss: 0 },
-            { count: 20, seedTime: 12000, max: 5, militaryCount: 1, chopperCount: 1, boss: 1 },
-            { count: 25, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 2, boss: 0 },
-            { count: 30, seedTime: 12000, max: 6, militaryCount: 0, chopperCount: 0, boss: 2 },
-            { count: 35, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 3, boss: 0 },
-            { count: 40, seedTime:  7500, max: 8, militaryCount: 0, chopperCount: 0, boss: 3 },
-            { count: 50, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0 }
+            { count:  6, seedTime: 25000, max: 3, militaryCount: 0, chopperCount: 0, boss: 0 },
+            { count: 12, seedTime: 17000, max: 5, militaryCount: 0, chopperCount: 0, boss: 0 },
+            { count: 20, seedTime: 12000, max: 5, militaryCount: 0, chopperCount: 1, boss: 1 },
+            { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 2, boss: 2 },
+            { count: 40, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 0 },
+            { count: 50, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 3 },
+            { count: 60, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0 },
+            { count: 80, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0 }
         ];
     };
 
@@ -143,13 +142,17 @@
     }
 
     function getNextAirplane() {
-        var nextAirplaneType = airplaneSpawns.shift();
-        if (nextAirplaneType === 1) {
-            return configuration.chopperSprites;
-        } else if (nextAirplaneType === 2) {
-            return configuration.militarySprites;
+        if (airplaneSpawns.length > 0) {
+            var nextAirplaneType = airplaneSpawns.shift();
+            if (nextAirplaneType === 1) {
+                return configuration.chopperSprites;
+            } else if (nextAirplaneType === 2) {
+                return configuration.militarySprites;
+            } else {
+                return configuration.airplaneSprites[nextAirplaneType - 3];
+            }
         } else {
-            return configuration.airplaneSprites[nextAirplaneType - 3];
+            configuration.airplaneSprites[Math.floor(Math.random() * configuration.airplaneSprites.length)];
         }
     }
 
@@ -189,9 +192,6 @@
 
     function createAirplane() {
         var nextPlaneType = getNextAirplane();
-        if (nextPlaneType == null) {
-            console.log("Error here");
-        }
         var airplaneFrame = nextPlaneType.frame;
         var airplaneSpeed = nextPlaneType.speed;
         var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
@@ -628,22 +628,20 @@
                 airplaneSpawns[i] = 3 + Math.floor(Math.random() * configuration.airplaneSprites.length);
             }
         }
-        // @TODO: Remove once spawning is verified
-        console.log("Generated spawns for " + currentSeedIndex + ":" + airplaneSpawns.toString());
     }
 
     function seedNextAirplane(currentTime, deltaTime) {
-        if (arrayOfAirplanes.length < configuration.airplaneSeedTime[currentSeedIndex].max) {
-            if (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime)) {
-                createAirplane();
-                if (totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count && currentSeedIndex < configuration.airplaneSeedTime.length-1) {
-                    if (currentSeedIndex < (configuration.airplaneSeedTime.length - 1)) {
-                        currentSeedIndex += 1;
-                    }
-                    generateSpawns();
+        if (arrayOfAirplanes.length < configuration.airplaneSeedTime[currentSeedIndex].max
+          && (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime))) {
+            if (airplaneSpawns.length < 1) {
+                if (totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count
+                  && (currentSeedIndex < (configuration.airplaneSeedTime.length - 1))) {
+                    currentSeedIndex += 1;
                 }
-                nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
+                generateSpawns();
             }
+            createAirplane();
+            nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
         }
     }
 
