@@ -201,7 +201,7 @@
             airplane.width = airplaneSize.width;
             airplane.height = airplaneSize.height;
             longestSide = Math.max(airplane.width, airplane.height);
-            airplane.inactive = true;
+            airplane.active = false
             airplane.activeTime = currentTime + configuration.airplaneSeedTime[currentSeedIndex].alertTime;
             airplane.radius = longestSide * 0.6;
             airplane.regX = airplane.width * 0.5;
@@ -565,10 +565,14 @@
 
     function updateAirplanePosition(time, deltaTime) {
         arrayOfAirplanes.forEach(function(airplane) {
-            if(!airplane.inactive) {
+            if(airplane.active) {
                 if ( ! airplane.updatePosition(time, deltaTime)) {
                 arrayOfLostAirplanes.push(airplane);
                 } 
+            } else if (time >= airplane.activeTime) {
+                airplane.active = true;
+                totalAirplanesSeen ++;
+                updateScore();
             }
         });
     }
@@ -710,7 +714,7 @@
             for (var j = i + 1; j < arrayOfAirplanes.length; j++) {
                 var planeA = arrayOfAirplanes[i];
                 var planeB = arrayOfAirplanes[j];
-                if ( ! planeA.isCrashed && ! planeB.isCrashed && !planeA.inactive && !planeB.inactive) {
+                if ( ! planeA.isCrashed && ! planeB.isCrashed && planeA.active && planeB.active) {
                     var distance = distanceBetweenPoints(planeA, planeB);
                     if (distance < planeA.radius + planeB.radius) {
                         planeA.setCrashed();
@@ -733,20 +737,9 @@
         stage.removeEventListener("stagemousemove", handleMouseMove);
     }
 
-    function updateInactiveAirplanes(currentTime) {
-        for (var i = 0; i < arrayOfAirplanes.length; i++) {
-            if (arrayOfAirplanes[i].inactive && currentTime >= arrayOfAirplanes[i].activeTime) {
-                arrayOfAirplanes[i].inactive = false;
-                totalAirplanesSeen ++;
-                updateScore();
-            }
-        }
-    }
-
     function onEnterFrame(tickEvent) {
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
-        updateInactiveAirplanes(tickEvent.time);
         removeLostAirplanes();
         collisionDetection();
         seedNextAirplane(tickEvent.time, deltaTime);
