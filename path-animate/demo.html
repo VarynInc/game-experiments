@@ -102,14 +102,14 @@
             speed: 1.5
         }
         configuration.airplaneSeedTime = [
-            { count:  6, seedTime: 25000, max: 3, militaryCount: 0, chopperCount: 0, boss: 0 },
-            { count: 12, seedTime: 17000, max: 5, militaryCount: 0, chopperCount: 0, boss: 0 },
-            { count: 20, seedTime: 12000, max: 5, militaryCount: 0, chopperCount: 1, boss: 1 },
-            { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 2, boss: 2 },
-            { count: 40, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 0 },
-            { count: 50, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 3 },
-            { count: 60, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0 },
-            { count: 80, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0 }
+            { count:  6, seedTime: 25000, max: 3, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
+            { count: 12, seedTime: 17000, max: 5, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
+            { count: 20, seedTime: 12000, max: 5, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
+            { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 2, boss: 2, alertTime: 3000 },
+            { count: 40, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 0, alertTime: 3000 },
+            { count: 50, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 3, alertTime: 3000 },
+            { count: 60, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0, alertTime: 2000 },
+            { count: 80, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0, alertTime: 1000 }
         ];
     };
 
@@ -190,7 +190,7 @@
         }
     }
 
-    function createAirplane() {
+    function createAirplane(currentTime) {
         var nextPlaneType = getNextAirplane();
         var airplaneFrame = nextPlaneType.frame;
         var airplaneSpeed = nextPlaneType.speed;
@@ -201,6 +201,8 @@
             airplane.width = airplaneSize.width;
             airplane.height = airplaneSize.height;
             longestSide = Math.max(airplane.width, airplane.height);
+            airplane.inactive = true;
+            airplane.activeTime = currentTime + configuration.airplaneSeedTime[currentSeedIndex].alertTime;
             airplane.radius = longestSide * 0.6;
             airplane.regX = airplane.width * 0.5;
             airplane.regY = airplane.height * 0.5;
@@ -225,7 +227,6 @@
                 height: stageHeight + airplaneSize.height
             };
             airplaneNextId += 1;
-            totalAirplanesSeen ++;
             arrayOfAirplanes.push(airplane);
 
             // Container will hold all airplane visual assets: sprite, track, highlight, effects.
@@ -533,7 +534,6 @@
 
             // position plane in its parent container
             airplane.setStartPosition();
-            updateScore();
             showFlightStatus(airplane);
         }
         return airplane;
@@ -565,8 +565,10 @@
 
     function updateAirplanePosition(time, deltaTime) {
         arrayOfAirplanes.forEach(function(airplane) {
-            if ( ! airplane.updatePosition(time, deltaTime)) {
+            if(!airplane.inactive) {
+                if ( ! airplane.updatePosition(time, deltaTime)) {
                 arrayOfLostAirplanes.push(airplane);
+                } 
             }
         });
     }
@@ -640,7 +642,7 @@
                 }
                 generateSpawns();
             }
-            createAirplane();
+            createAirplane(currentTime);
             nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
         }
     }
@@ -708,7 +710,7 @@
             for (var j = i + 1; j < arrayOfAirplanes.length; j++) {
                 var planeA = arrayOfAirplanes[i];
                 var planeB = arrayOfAirplanes[j];
-                if ( ! planeA.isCrashed && ! planeB.isCrashed) {
+                if ( ! planeA.isCrashed && ! planeB.isCrashed && !planeA.inactive && !planeB.inactive) {
                     var distance = distanceBetweenPoints(planeA, planeB);
                     if (distance < planeA.radius + planeB.radius) {
                         planeA.setCrashed();
@@ -731,9 +733,20 @@
         stage.removeEventListener("stagemousemove", handleMouseMove);
     }
 
+    function updateInactiveAirplanes(currentTime) {
+        for (var i = 0; i < arrayOfAirplanes.length; i++) {
+            if (arrayOfAirplanes[i].inactive && currentTime >= arrayOfAirplanes[i].activeTime) {
+                arrayOfAirplanes[i].inactive = false;
+                totalAirplanesSeen ++;
+                updateScore();
+            }
+        }
+    }
+
     function onEnterFrame(tickEvent) {
         var deltaTime = tickEvent.delta / 1000;
         updateAirplanePosition(tickEvent.time, deltaTime);
+        updateInactiveAirplanes(tickEvent.time);
         removeLostAirplanes();
         collisionDetection();
         seedNextAirplane(tickEvent.time, deltaTime);
@@ -797,7 +810,7 @@
             airplane.alertContainer = null;
             airplane.alertTimeout = 0;
             alertContainer.visible = false;
-        }, 7000);
+        }, configuration.airplaneSeedTime[currentSeedIndex].alertTime);
     }
 
     function createAlertContainer() {
