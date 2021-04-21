@@ -38,13 +38,8 @@
         airplaneWarning: null,
         airplaneSprites: null,
         airplaneSeedTime: null,
-        landingZones: [
-            [{x: 980, y: 252}, {x: 970, y: 420}, {x: 1038, y: 424}, {x: 1040, y: 260}],
-            [{x: 922, y: 1348}, {x: 928, y: 1184}, {x: 994, y: 1186}, {x: 984, y: 1352}],
-            [{x: 1300, y: 342}, {x: 1208, y: 422}, {x: 1256, y: 478}, {x: 1344, y: 394}],
-            [{x: 294, y: 1246}, {x: 404, y: 1154}, {x: 444, y: 1200}, {x: 342, y: 1288}],
-            [{x: 798, y: 1112, r: 48}]
-        ]
+        airportBackground: null,
+        landingZones: null
     };
     var scaleFactor = 0.5;
     var arrayOfAirplanes = [];
@@ -113,15 +108,25 @@
         configuration.chopperSprites = {
             frame: "chopper",
             speed: 0.5
-        }
+        };
         configuration.militarySprites = {
             frame: "a-mil",
             speed: 1.5
-        }
+        };
+        configuration.airportBackground = "airport-50.jpg";
+        // landing zones are based on background
+        configuration.landingZones = [
+            [{x: 980, y: 252}, {x: 970, y: 420}, {x: 1038, y: 424}, {x: 1040, y: 260}],
+            [{x: 922, y: 1348}, {x: 928, y: 1184}, {x: 994, y: 1186}, {x: 984, y: 1352}],
+            [{x: 1300, y: 342}, {x: 1208, y: 422}, {x: 1256, y: 478}, {x: 1344, y: 394}],
+            [{x: 294, y: 1246}, {x: 404, y: 1154}, {x: 444, y: 1200}, {x: 342, y: 1288}],
+            [{x: 798, y: 1112, r: 48}]
+        ];
         configuration.airplaneSeedTime = [
-            { count:  6, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
-            { count: 12, seedTime: 17000, max: 1, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
-            { count: 20, seedTime: 12000, max: 1, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
+            { count:  3, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count:  6, seedTime: 20000, max: 2, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count: 12, seedTime: 17000, max: 3, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count: 20, seedTime: 12000, max: 4, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
             { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 2, boss: 2, alertTime: 3000 },
             { count: 40, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 0, alertTime: 3000 },
             { count: 50, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 3, alertTime: 3000 },
@@ -153,7 +158,7 @@
         loader.loadManifest([
             { src: "game-spritesheet.png", id: "game-sprites" },
             { src: "game-spritesheet.json", id: "game-spriteframes" },
-            { src: "airport-50.jpg", id: "background" }
+            { src: configuration.airportBackground, id: "background" }
         ],
         true, "./");
     }
