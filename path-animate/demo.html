@@ -9,6 +9,7 @@
     <script src="./flightData.js"></script>
     <script id="editable">
     "use strict";
+    var debug = false;
     var canvas;
     var stage;
     var stageWidth;
@@ -19,10 +20,11 @@
     var PIOneEighty = Math.PI / 180;
     var oneEightyPI = 180 / Math.PI;
     var minFlightTime = 2;
-    var maxAnglePerFrame = (360 / framerate) * 2;
+    var maxAnglePerFrame = 360 / 2 / framerate;
     var crashTimeToRemoval = 5;
     var airplaneNextId;
     var totalAirplanesSeen = 0;
+    var totalAirplanesLanded = 0;
     var totalAirplanesCrashed = 0;
     var activeAirplaneId = 0;
     var loader;
@@ -35,16 +37,31 @@
         airplaneSelected: null,
         airplaneWarning: null,
         airplaneSprites: null,
-        airplaneSeedTime: null
+        airplaneSeedTime: null,
+        landingZones: [
+            [{x: 980, y: 252}, {x: 970, y: 420}, {x: 1038, y: 424}, {x: 1040, y: 260}],
+            [{x: 922, y: 1348}, {x: 928, y: 1184}, {x: 994, y: 1186}, {x: 984, y: 1352}],
+            [{x: 1300, y: 342}, {x: 1208, y: 422}, {x: 1256, y: 478}, {x: 1344, y: 394}],
+            [{x: 294, y: 1246}, {x: 404, y: 1154}, {x: 444, y: 1200}, {x: 342, y: 1288}],
+            [{x: 798, y: 1112, r: 48}]
+        ]
     };
+    var scaleFactor = 0.5;
     var arrayOfAirplanes = [];
     var arrayOfLostAirplanes = [];
     var arrayOfAlertContainers = [];
+    var arrayOfLandingZones = [];
     var nextAirplaneTime = -1;
     var airplaneSpriteSheet;
     var interval;
     var currentSeedIndex;
     var airplaneSpawns; // Pre-seed the current level for each airplane spawn
+
+    function debugLog(message) {
+        if (debug) {
+            console.log(message);
+        }
+    }
 
     function loadConfiguration() {
         configuration.flightPathAttributes = {
@@ -102,9 +119,9 @@
             speed: 1.5
         }
         configuration.airplaneSeedTime = [
-            { count:  6, seedTime: 25000, max: 3, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
-            { count: 12, seedTime: 17000, max: 5, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
-            { count: 20, seedTime: 12000, max: 5, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
+            { count:  6, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count: 12, seedTime: 17000, max: 1, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count: 20, seedTime: 12000, max: 1, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
             { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 2, boss: 2, alertTime: 3000 },
             { count: 40, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 0, alertTime: 3000 },
             { count: 50, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 3, alertTime: 3000 },
@@ -136,7 +153,7 @@
         loader.loadManifest([
             { src: "game-spritesheet.png", id: "game-sprites" },
             { src: "game-spritesheet.json", id: "game-spriteframes" },
-            { src: "background.jpg", id: "background" }
+            { src: "airport-50.jpg", id: "background" }
         ],
         true, "./");
     }
@@ -157,8 +174,8 @@
     }
 
     function showGUI() {
-        var scoreField = new createjs.Text("0", "bold 48px Arial", "#FFFFFF");
-        scoreField.maxWidth = 50;
+        var scoreField = new createjs.Text("0 / 0", "bold 48px Arial", "#FFFFFF");
+        scoreField.maxWidth = 80;
         scoreField.name = "score";
         scoreField.textAlign = "center";
         scoreField.textBaseline = "middle";
@@ -179,7 +196,7 @@
     function updateScore() {
         var scoreField = stage.getChildByName("score");
         if (scoreField != null) {
-            scoreField.text = totalAirplanesSeen.toString();
+            scoreField.text = totalAirplanesSeen.toString() + " / " + totalAirplanesLanded;
         }
     }
 
@@ -212,11 +229,13 @@
             airplane.type = airplaneFrame;
             airplane.id = airplaneNextId;
             airplane.flightData = flightData.getNextFlightNumber(airplaneFrame);
-            airplane.flightData.scheduledArrival = new Date(Date.now() + (1000 * 60 * 60));
+            airplane.flightData.scheduledArrival = new Date(Date.now() + (1000 * 60 * 150)); // TODO: figure out what makes sense for scheduled arrival times
             airplane.timeoutId = 0;
             airplane.crashTimeout = crashTimeToRemoval;
             airplane.flightTime = 0;
+            airplane.arrivalTime = 0;
             airplane.isCrashed = false;
+            airplane.isLanding = false;
             airplane.alertContainer = null;
             airplane.graphicsFillCommand = null;
             airplane.graphicsStrokeCommand = null;
@@ -311,12 +330,12 @@
 
                     if (quadrant === 0) {
                         // airplane coming from top
-                        this.y = -1 * this.height;
+                        this.y = 0 - this.height;
                         finalPosition.y = canvas.height + this.height;
                     } else {
                         // airplane coming from below
                         this.y = canvas.height + this.height;
-                        finalPosition.y = -1 * this.height;
+                        finalPosition.y = 0 - this.height;
                     }
                 } else {
                     // airplane coming from either right or left
@@ -325,15 +344,16 @@
 
                     if (quadrant === 2) {
                         // airplane coming from left
-                        this.x = -1 * this.height;
+                        this.x = 0 - this.height;
                         finalPosition.x = canvas.width + this.height;
                     } else {
                         // airplane coming from right
                         this.x = canvas.width + this.height;
-                        finalPosition.x = -1 * this.height;
+                        finalPosition.x = 0 - this.height;
                     }
                 }
                 this.movePlane(finalPosition);
+                debugLog("A " + this.id + " start(" + this.x + "," + this.y + ") going to (" + finalPosition.x + "," + finalPosition.y + ") at angle " + this.rotation);
                 this.updatePosition(0, framesPerMillisecond);
             };
 
@@ -390,8 +410,15 @@
                                     }
                                 }
                                 if (nextPoint != null) {
-                                    var deltaAngle = Math.abs(airplane.rotation - angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y));
-                                    if (deltaAngle <= maxAnglePerFrame) {
+                                    // compute what the angle will be to the next point and compare it with the current angle
+                                    // TODO: Clean up this code for performance
+                                    var angle = angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y);
+                                    var deltaAngle = airplane.rotation - angle;
+                                    var deltaAngleZ = Math.abs(deltaAngle);
+                                    // TODO: when crossing 0/359 we have to account for that
+                                    // var deltaAngle = Math.abs(airplane.rotation - angleOfLine(airplane, nextPoint));
+                                    debugLog("R=" + airplane.rotation + ", dA=" + deltaAngle);
+                                    if (deltaAngle <= maxAnglePerFrame || (deltaAngle > (360 - maxAnglePerFrame))) {
                                         this.movePlane(nextPoint);
                                     } else {
                                         // if new angle is too great then flight path is no good, clear it
@@ -422,6 +449,57 @@
                     && this.y < this.range.height;
             }
 
+            airplane.isAlignedForLanding = function() {
+                // test if airplane aligns with a landing zone
+                var i;
+                var zone;
+                var isAligned = false;
+                var isChopper = false;
+                for (i = 0; i < arrayOfLandingZones.length; i ++) {
+                    zone = arrayOfLandingZones[i];
+                    if (airplane.type == "chopper" && zone.circle != null) {
+                        isChopper = true;
+                        isAligned = distanceBetweenPoints(airplane, zone.circle) <= zone.circle.r;
+                    } else if (airplane.type != "chopper" && zone.polygon != null) {
+                        isAligned = pointInsidePolygon(this, zone.polygon) && slopeMatch(this, zone);
+                    }
+                    if (isAligned) {
+                        this.isLanding = true;
+                        this.arrivalTime = Date.now();
+                        totalAirplanesLanded += 1;
+                        zone.landedCount += 1;
+                        var drawingCanvas = getAirplaneFlightPathCanvas(this);
+                        drawingCanvas.graphics.clear();
+                        drawingCanvas.flightPath = [];
+                        this.flightPathIndex = 0;
+                        updateScore();
+                        if (isChopper) {
+                            var scaleTo = 0.75;
+                            airplane.speed = 0;
+                            createjs.Tween.get(this)
+                                .to({scaleX: scaleTo, scaleY: scaleTo, x: zone.circle.x, y: zone.circle.y}, 4000, createjs.Ease.quadIn)
+                                .call(function(airplane) {
+                                    airplane.removeFromGame();
+                                }, [this]);
+                        } else {
+                            // this.rotation = zone.landingRotation;
+                            var speedUp = this.speed * 1.8;
+                            var speedDown = 0.1;
+                            var scaleTo = 0.75;
+                            createjs.Tween.get(this)
+                                .to({rotation: zone.landingRotation, speed: speedUp}, 1000, createjs.Ease.quadIn)
+                                .to({scaleX: scaleTo, scaleY: scaleTo}, 3000, createjs.Ease.quadIn)
+                                .to({speed: 0.2}, 4000, createjs.Ease.quadOut)
+                                .call(function(airplane) {
+                                    airplane.removeFromGame();
+                                }, [this]);
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             airplane.removeFromGame = function() {
                 var airplaneIndex = airplaneIndexFromId(this.id);
                 if (activeAirplaneId == this.id) {
@@ -432,6 +510,8 @@
                     this.timeoutId = 0;
                 }
                 this.removeAllEventListeners();
+                this.scaleX = 1;
+                this.scaleY = 1;
                 var airplaneContainer = this.parent;
                 if (airplaneContainer != null) {
                     var highlight = airplaneContainer.getChildByName("highlight");
@@ -452,7 +532,7 @@
                 // clear the prior drawing on this airplane
                 var airplane = event.target;
                 if (airplane != null) {
-                    if (airplane.isCrashed) {
+                    if (airplane.isCrashed || airplane.isLanding) {
                         return;
                     }
                     var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
@@ -482,7 +562,7 @@
                 if (!event.primary) { return; }
                 var airplane = event.target;
                 if (airplane != null) {
-                    if (airplane.isCrashed) {
+                    if (airplane.isCrashed || airplane.isLanding) {
                         return;
                     }
                     var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
@@ -520,6 +600,7 @@
             airplane.movePlane = function (toPosition) {
                 // Update rotation of airplane based on target point
                 this.rotation = angleOfAirplane(this, this.x - toPosition.x, this.y - toPosition.y);
+                // this.rotation = angleOfLine(this, toPosition);
             }
 
             airplane.toString = function() {
@@ -565,7 +646,7 @@
 
     function updateAirplanePosition(time, deltaTime) {
         arrayOfAirplanes.forEach(function(airplane) {
-            if(airplane.active) {
+            if (airplane.active) {
                 if ( ! airplane.updatePosition(time, deltaTime)) {
                 arrayOfLostAirplanes.push(airplane);
                 } 
@@ -663,10 +744,64 @@
         if (background == null) {
             background = new createjs.Shape();
             background.name = "background";
-            background.graphics.beginBitmapFill(loader.getResult("background")).drawRect(0, 0, stageWidth, stageHeight);
+            var backgroundImage = loader.getResult("background");
+            var imageWidth = backgroundImage.width;
+            var imageHeight = backgroundImage.height;
+            var scaleWidth = stageWidth / imageWidth;
+            var scaleHeight = stageHeight / imageHeight;
+            var scale;
+            if (scaleWidth > scaleHeight) {
+                scale = scaleWidth;
+            } else {
+                scale = scaleHeight;
+            }
+            background.graphics.beginBitmapFill(backgroundImage).drawRect(0, 0, imageWidth, imageHeight);
+            background.scaleX = scale;
+            background.scaleY = scale;
             background.cache(0, 0, stageWidth, stageHeight);
             stage.addChild(background);
         }
+    }
+
+    function createLandingZones() {
+        var landingZones = configuration.landingZones;
+        var landingZoneShape;
+        var landingZoneId = 0;
+        var tolerance = 15;
+        landingZones.forEach(function(zone) {
+            landingZoneId ++;
+            var polygon = [];
+            var circle;
+            landingZoneShape = new createjs.Shape();
+            var graphics = landingZoneShape.graphics.beginFill("#000000");
+            if (zone.length == 4) {
+                // Airplane rectangle
+                for (var i = 0; i < zone.length; i ++) {
+                    polygon[i] = {x: zone[i].x * scaleFactor, y: zone[i].y * scaleFactor};
+                }
+                graphics.moveTo(polygon[0].x, polygon[0].y)
+                .lineTo(polygon[1].x, polygon[1].y)
+                .lineTo(polygon[2].x, polygon[2].y)
+                .lineTo(polygon[3].x, polygon[3].y)
+                .lineTo(polygon[0].x, polygon[0].y);
+                landingZoneShape.polygon = polygon;
+                landingZoneShape.circle = null;
+                landingZoneShape.landingRotation = angleOfLandingZone(polygon[1], polygon[0]);
+                landingZoneShape.landingRotationLow = normalizeAngle(landingZoneShape.landingRotation - tolerance);
+                landingZoneShape.landingRotationHigh = normalizeAngle(landingZoneShape.landingRotation + tolerance);
+            } else {
+                // chopper circle
+                circle = {x: zone[0].x * scaleFactor, y: zone[0].y * scaleFactor, r: zone[0].r * scaleFactor};
+                graphics.drawCircle(circle.x, circle.y, circle.r);
+                landingZoneShape.circle = circle;
+                landingZoneShape.polygon = null;
+            }
+            landingZoneShape.alpha = 0.4;
+            landingZoneShape.id = landingZoneId;
+            landingZoneShape.landedCount = 0;
+            stage.addChild(landingZoneShape);
+            arrayOfLandingZones.push(landingZoneShape);
+        });
     }
 
     function handleLoadComplete() {
@@ -676,6 +811,7 @@
         nextAirplaneTime = 0;
         createSprites();
         createBackground();
+        createLandingZones();
         showGUI();
         generateSpawns();
         createjs.Ticker.addEventListener("tick", onEnterFrame);
@@ -683,49 +819,151 @@
     }
 
     function distanceBetweenPoints(pointA, pointB) {
-        var xDist = pointB.x - pointA.x;
-        var yDist = pointB.y - pointA.y;
-        return Math.sqrt(Math.pow(xDist, 2) + Math.pow(yDist, 2));
+        var xDistance = pointB.x - pointA.x;
+        var yDistance = pointB.y - pointA.y;
+        return Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
     }
 
-    function angleOfObject(xDist, yDist) {
-        return Math.atan(yDist / xDist) * oneEightyPI;
+    function distanceBetweenPointsSquared(pointA, pointB) {
+        var xDistance = pointB.x - pointA.x;
+        var yDistance = pointB.y - pointA.y;
+        return (xDistance * xDistance) + (yDistance * yDistance);
     }
 
-    function slopeOfLine(firstPoint, secondPoint) {
+    function angleOfObject(xDistance, yDistance) {
+        return Math.atan(yDistance / xDistance) * oneEightyPI;
+    }
+
+    function angleOfLine(firstPoint, secondPoint) {
         return angleOfObject(secondPoint.x - firstPoint.x, secondPoint.y - firstPoint.y);
     }
 
-    function angleOfAirplane(airplane, xDist, yDist) {
-        var angle = angleOfObject(xDist, yDist);
-        (xDist < 0) ? angle += 90 : angle -= 90;
-        // adjusts to find smallest angle
+    /**
+     * Make sure any angle is between 0 and 359 degrees.
+     */
+    function normalizeAngle(angle) {
+        while (angle < 0) {
+            angle += 360;
+        }
+        while (angle >= 360) {
+            angle -= 360;
+        }
+        return angle;
+    }
+
+    /**
+     * Determine if a point is inside a polygon. Algorithm from https://github.com/substack/point-in-polygon.
+     * @param {Point} point is an object with an `x`and `y` property.
+     * @param {Array} polygon is an array of objects each with an `x`and `y` property.
+     * @return {Boolean} true when the point is inside the polygon.
+     */
+    function pointInsidePolygon(point, polygon) {
+        var i;
+        var j;
+        var xi;
+        var yi;
+        var xj;
+        var yj;
+        var intersect;
+        var isInside = false;
+        var length = polygon.length;
+        var y = point.y;
+        for (i = 0, j = length - 1; i < length; j = i ++) {
+            xi = polygon[i].x;
+            yi = polygon[i].y;
+            yj = polygon[j].y;
+            intersect = ((yi > y) !== (yj > y)) && (point.x < (polygon[j].x - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) {
+                isInside = ! isInside;
+            }
+        }
+        return isInside;
+    }
+    
+    function slopeMatch(airplane, landingZone) {
+        // determine if the slopes match with some degree of tolerance
+        if (   (airplane.rotation >= landingZone.landingRotationLow
+            &&  airplane.rotation <= landingZone.landingRotationHigh)
+            || ((landingZone.landingRotationLow > landingZone.landingRotationHigh)
+            && (airplane.rotation >= landingZone.landingRotationLow || airplane.rotation <= landingZone.landingRotationHigh))) {
+            debugLog("Airplane " + airplane.id + " is within tolerance: A.r=" + airplane.rotation + ", L.r=" + landingZone.landingRotationLow + "/" + landingZone.landingRotationHigh);
+            return true;
+        }
+        return false;
+    }
+
+    function angleOfAirplane(airplane, xDistance, yDistance) {
+        var angle = angleOfObject(xDistance, yDistance);
+        // adjusts to 4th quadrant, since everything must be mirrored to 0,0 being upper-left, w,h is lower right.
+        //        0
+        //        |
+        // 270 < -+- > 90
+        //        |
+        //       180
+        if (xDistance < 0) {
+            angle += 90;
+        } else {
+            angle -= 90;
+        }
         var deltaAngle = airplane.rotation - angle;
         if (deltaAngle > 180) {
             angle += 360;
         } else if (deltaAngle < -180) {
             angle -= 360;
         }
-        return angle;
+        return normalizeAngle(angle);
+    }
+
+    function angleOfLandingZone(startPoint, endPoint) {
+        var xDistance = endPoint.x - startPoint.x;
+        var yDistance = endPoint.y - startPoint.y;
+        var angle = angleOfObject(xDistance, yDistance);
+        // adjusts to 4th quadrant
+        if (xDistance < 0) {
+            angle += 90;
+        } else {
+            angle -= 90;
+        }
+        var deltaAngle = 0 - angle;
+        if (deltaAngle > 180) {
+            angle += 360;
+        } else if (deltaAngle < -180) {
+            angle -= 360;
+        }
+        return normalizeAngle(angle);
     }
 
     function collisionDetection() {
-        for (var i = 0; i < arrayOfAirplanes.length - 1; i++) {
-            for (var j = i + 1; j < arrayOfAirplanes.length; j++) {
-                var planeA = arrayOfAirplanes[i];
-                var planeB = arrayOfAirplanes[j];
-                if ( ! planeA.isCrashed && ! planeB.isCrashed && planeA.active && planeB.active) {
-                    var distance = distanceBetweenPoints(planeA, planeB);
-                    if (distance < planeA.radius + planeB.radius) {
-                        planeA.setCrashed();
-                        planeB.setCrashed();
-                        totalAirplanesCrashed += 2;
-                        updateCrashes();
-                        // returning here means no other planes will crash this frame
-                        return true; // something crashed
+        var numberOfAirplanes = arrayOfAirplanes.length;
+        if (numberOfAirplanes < 1) {
+            return;
+        }
+        var planeA;
+        var planeB;
+        var i;
+        var j;
+        for (i = 0; i < numberOfAirplanes - 1; i++) {
+            planeA = arrayOfAirplanes[i];
+            if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding && ! planeA.isAlignedForLanding()) {
+                for (j = i + 1; j < numberOfAirplanes; j++) {
+                    planeB = arrayOfAirplanes[j];
+                    if (planeB.active && ! planeB.isCrashed && ! planeB.isLanding) {
+                        if (distanceBetweenPoints(planeA, planeB) < (planeA.radius + planeB.radius)) {
+                            planeA.setCrashed();
+                            planeB.setCrashed();
+                            totalAirplanesCrashed += 2;
+                            updateCrashes();
+                            // returning here means no other planes will crash this frame
+                            return true; // something crashed
+                        }
                     }
                 }
             }
+        }
+        // if we get here the last plane was not checked for landing
+        planeA = arrayOfAirplanes[numberOfAirplanes - 1];
+        if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding) {
+            planeA.isAlignedForLanding();
         }
         return false; // no crashes
     }
@@ -764,13 +1002,14 @@
         var alertContainer = getFreeAlertContainer();
         var child;
         var airplaneFrame = airplane.currentAnimation;
-        // longestSide = Math.max(airplane.width, airplane.height);
+        // show a small icon of the airplane
         child = alertContainer.getChildByName("sprite");
         if (child != null) {
             child.gotoAndStop(airplaneFrame);
             child.regX = airplane.width * 0.5;
             child.regY = 0;
             child.scale = 18 / airplane.height;
+            child.rotation = 0;
         }
         child = alertContainer.getChildByName("field1");
         if (child != null) {
@@ -824,7 +1063,7 @@
         var airplaneSprite = new createjs.Sprite(airplaneSpriteSheet);
         airplaneSprite.name = "sprite";
         airplaneSprite.x = width * 0.5;
-        airplaneSprite.y = height * 0.02;
+        airplaneSprite.y = height * 0.05;
         alertContainer.addChild(airplaneSprite);
 
         var textField = new createjs.Text("AA 1111", "bold 10px Arial", "#FFFFFF");
@@ -868,13 +1107,27 @@
         showNewAirplaneAlert(airplane);
     }
     </script>
+    <style>
+        html, body {
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding:0;
+            width: 100%;
+            height: 100%;
+        }
+        #myCanvas {
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding:0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 
 <body onload="init();">
-    <header class="EaselJS">
-        <h1>Demo</h1>
-        <p id="statusMessage">Click and drag to set a path for an airplane</p>
-    </header>
     <canvas id="myCanvas" width="1024" height="768"></canvas>
 </body>
 </html>
