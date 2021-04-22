@@ -14,6 +14,7 @@
     var stage;
     var stageWidth;
     var stageHeight;
+    var scaleFactor = 0.5;
     var framerate = 30;
     var framesPerMillisecond = framerate / 1000;
     var millisecondsPerFrame = 1000 / framerate;
@@ -21,16 +22,16 @@
     var oneEightyPI = 180 / Math.PI;
     var minFlightTime = 2;
     var maxAnglePerFrame = 360 / 2 / framerate;
-    var crashTimeToRemoval = 5;
-    var airplaneNextId;
-    var totalAirplanesSeen = 0;
-    var totalAirplanesLanded = 0;
-    var totalAirplanesCrashed = 0;
-    var activeAirplaneId = 0;
     var loader;
     var priorPoint;
     var priorMidPoint;
+    var arrayOfLostAirplanes = [];
+    var arrayOfAlertContainers = [];
+    var arrayOfLandingZones = [];
+    var airplaneSpriteSheet;
+    var arrayOfAirplanes = []; // TODO: Needs to move to gameData
     var configuration = {
+        crashTimeToRemoval: 5,
         flightPathAttributes: null,
         airplaneAlert: null,
         airplaneHighlight: null,
@@ -41,16 +42,17 @@
         airportBackground: null,
         landingZones: null
     };
-    var scaleFactor = 0.5;
-    var arrayOfAirplanes = [];
-    var arrayOfLostAirplanes = [];
-    var arrayOfAlertContainers = [];
-    var arrayOfLandingZones = [];
-    var nextAirplaneTime = -1;
-    var airplaneSpriteSheet;
-    var interval;
-    var currentSeedIndex;
-    var airplaneSpawns; // Pre-seed the current level for each airplane spawn
+    var gameData = {
+        airplaneNextId: 0,
+        totalAirplanesSeen: 0,
+        totalAirplanesLanded: 0,
+        totalAirplanesCrashed: 0,
+        activeAirplaneId: 0,
+        nextAirplaneTime: -1,
+        currentSeedIndex: 0,
+        airplaneSpawns: null, // Pre-seed the current level for each airplane spawn
+        arrayOfAirplanes: []
+    }
 
     function debugLog(message) {
         if (debug) {
@@ -164,8 +166,8 @@
     }
 
     function getNextAirplane() {
-        if (airplaneSpawns.length > 0) {
-            var nextAirplaneType = airplaneSpawns.shift();
+        if (gameData.airplaneSpawns.length > 0) {
+            var nextAirplaneType = gameData.airplaneSpawns.shift();
             if (nextAirplaneType === 1) {
                 return configuration.chopperSprites;
             } else if (nextAirplaneType === 2) {
@@ -201,14 +203,14 @@
     function updateScore() {
         var scoreField = stage.getChildByName("score");
         if (scoreField != null) {
-            scoreField.text = totalAirplanesSeen.toString() + " / " + totalAirplanesLanded;
+            scoreField.text = gameData.totalAirplanesSeen.toString() + " / " + gameData.totalAirplanesLanded;
         }
     }
 
     function updateCrashes() {
         var crashField = stage.getChildByName("crashes");
         if (crashField != null) {
-            crashField.text = totalAirplanesCrashed.toString();
+            crashField.text = gameData.totalAirplanesCrashed.toString();
         }
     }
 
@@ -224,7 +226,7 @@
             airplane.height = airplaneSize.height;
             longestSide = Math.max(airplane.width, airplane.height);
             airplane.active = false
-            airplane.activeTime = currentTime + configuration.airplaneSeedTime[currentSeedIndex].alertTime;
+            airplane.activeTime = currentTime + configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime;
             airplane.radius = longestSide * 0.6;
             airplane.regX = airplane.width * 0.5;
             airplane.regY = airplane.height * 0.5;
@@ -232,11 +234,11 @@
             airplane.speed = airplaneSpeed;
             airplane.updateInterval = longestSide * 0.5;
             airplane.type = airplaneFrame;
-            airplane.id = airplaneNextId;
+            airplane.id = gameData.airplaneNextId;
             airplane.flightData = flightData.getNextFlightNumber(airplaneFrame);
             airplane.flightData.scheduledArrival = new Date(Date.now() + (1000 * 60 * 150)); // TODO: figure out what makes sense for scheduled arrival times
             airplane.timeoutId = 0;
-            airplane.crashTimeout = crashTimeToRemoval;
+            airplane.crashTimeout = configuration.crashTimeToRemoval;
             airplane.flightTime = 0;
             airplane.arrivalTime = 0;
             airplane.isCrashed = false;
@@ -250,7 +252,7 @@
                 width: stageWidth + airplaneSize.width,
                 height: stageHeight + airplaneSize.height
             };
-            airplaneNextId += 1;
+            gameData.airplaneNextId += 1;
             arrayOfAirplanes.push(airplane);
 
             // Container will hold all airplane visual assets: sprite, track, highlight, effects.
@@ -370,7 +372,7 @@
                     this.alertContainer.visible = false;
                     this.alertContainer = null;
                 }
-                this.crashTimeout = crashTimeToRemoval;
+                this.crashTimeout = configuration.crashTimeToRemoval;
                 this.setAlert();
             }
 
@@ -381,7 +383,7 @@
                 if (this.isCrashed) {
                     this.crashTimeout -= deltaTime;
                     if (airplaneContainer != null) {
-                        airplaneContainer.alpha = this.crashTimeout / crashTimeToRemoval;
+                        airplaneContainer.alpha = this.crashTimeout / configuration.crashTimeToRemoval;
                     }
                     if (this.crashTimeout <= 0) {
                         this.removeFromGame();
@@ -471,7 +473,7 @@
                     if (isAligned) {
                         this.isLanding = true;
                         this.arrivalTime = Date.now();
-                        totalAirplanesLanded += 1;
+                        gameData.totalAirplanesLanded += 1;
                         zone.landedCount += 1;
                         var drawingCanvas = getAirplaneFlightPathCanvas(this);
                         drawingCanvas.graphics.clear();
@@ -479,15 +481,17 @@
                         this.flightPathIndex = 0;
                         updateScore();
                         if (isChopper) {
+                            // Chopper landing sequence
                             var scaleTo = 0.75;
                             airplane.speed = 0;
                             createjs.Tween.get(this)
-                                .to({scaleX: scaleTo, scaleY: scaleTo, x: zone.circle.x, y: zone.circle.y}, 4000, createjs.Ease.quadIn)
+                                .to({scaleX: scaleTo, scaleY: scaleTo, x: zone.circle.x, y: zone.circle.y}, 4000, createjs.Ease.quadOut)
+                                .wait(1000)
                                 .call(function(airplane) {
                                     airplane.removeFromGame();
                                 }, [this]);
                         } else {
-                            // this.rotation = zone.landingRotation;
+                            // Airplane landing sequence
                             var speedUp = this.speed * 1.8;
                             var speedDown = 0.1;
                             var scaleTo = 0.75;
@@ -495,6 +499,7 @@
                                 .to({rotation: zone.landingRotation, speed: speedUp}, 1000, createjs.Ease.quadIn)
                                 .to({scaleX: scaleTo, scaleY: scaleTo}, 3000, createjs.Ease.quadIn)
                                 .to({speed: 0.2}, 4000, createjs.Ease.quadOut)
+                                .wait(1000)
                                 .call(function(airplane) {
                                     airplane.removeFromGame();
                                 }, [this]);
@@ -507,8 +512,8 @@
 
             airplane.removeFromGame = function() {
                 var airplaneIndex = airplaneIndexFromId(this.id);
-                if (activeAirplaneId == this.id) {
-                    activeAirplaneId = 0;
+                if (gameData.activeAirplaneId == this.id) {
+                    gameData.activeAirplaneId = 0;
                 }
                 if (this.timeoutId > 0) {
                     window.clearTimeout(this.timeoutId);
@@ -546,14 +551,14 @@
                     airplane.flightPathIndex = 0;
 
                     // Remove selected indicator from current selection.
-                    if (activeAirplaneId != 0) {
+                    if (gameData.activeAirplaneId != 0) {
                         var priorSelectedAirplane = getActiveAirplane();
                         if (priorSelectedAirplane != null) {
                             priorSelectedAirplane.setHighlight();
                         }
                     }
                     airplane.setSelected();
-                    activeAirplaneId = airplane.id;
+                    gameData.activeAirplaneId = airplane.id;
 
                     // register the starting point and track the mouse
                     priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
@@ -635,7 +640,7 @@
     }
 
     function getActiveAirplane() {
-        var activeIndex = airplaneIndexFromId(activeAirplaneId);
+        var activeIndex = airplaneIndexFromId(gameData.activeAirplaneId);
         if (activeIndex >= 0 && activeIndex < arrayOfAirplanes.length) {
             return arrayOfAirplanes[activeIndex];
         }
@@ -657,7 +662,7 @@
                 } 
             } else if (time >= airplane.activeTime) {
                 airplane.active = true;
-                totalAirplanesSeen ++;
+                gameData.totalAirplanesSeen ++;
                 updateScore();
             }
         });
@@ -672,6 +677,7 @@
 
     function generateSpawns() {
         // generates all airplane spawns for the current level
+        var currentSeedIndex = gameData.currentSeedIndex;
         var currentSeed = configuration.airplaneSeedTime[currentSeedIndex];
         var previousCount = 0; // previous count defaults to 0 for when seed = 0
         if (currentSeedIndex > 0) {
@@ -681,7 +687,7 @@
         var i;
         var nextSpawn;
         var duplicateSpawnCounter;
-        airplaneSpawns = [];
+        var airplaneSpawns = [];
         for (i = 0; i < totalSpawns; i ++) {
             airplaneSpawns[i] = 0;
         }
@@ -720,20 +726,23 @@
                 airplaneSpawns[i] = 3 + Math.floor(Math.random() * configuration.airplaneSprites.length);
             }
         }
+        gameData.airplaneSpawns = airplaneSpawns;
     }
 
     function seedNextAirplane(currentTime, deltaTime) {
+        var currentSeedIndex = gameData.currentSeedIndex;
         if (arrayOfAirplanes.length < configuration.airplaneSeedTime[currentSeedIndex].max
-          && (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime))) {
-            if (airplaneSpawns.length < 1) {
-                if (totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count
+          && (gameData.nextAirplaneTime == 0 || (currentTime > gameData.nextAirplaneTime))) {
+            if (gameData.airplaneSpawns.length < 1) {
+                if (gameData.totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count
                   && (currentSeedIndex < (configuration.airplaneSeedTime.length - 1))) {
                     currentSeedIndex += 1;
+                    gameData.currentSeedIndex = currentSeedIndex;
                 }
                 generateSpawns();
             }
             createAirplane(currentTime);
-            nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
+            gameData.nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
         }
     }
 
@@ -810,10 +819,10 @@
     }
 
     function handleLoadComplete() {
-        airplaneNextId = 1;
-        currentSeedIndex = 0;
-        airplaneSpawns = [];
-        nextAirplaneTime = 0;
+        gameData.airplaneNextId = 1;
+        gameData.currentSeedIndex = 0;
+        gameData.airplaneSpawns = [];
+        gameData.nextAirplaneTime = 0;
         createSprites();
         createBackground();
         createLandingZones();
@@ -956,7 +965,7 @@
                         if (distanceBetweenPoints(planeA, planeB) < (planeA.radius + planeB.radius)) {
                             planeA.setCrashed();
                             planeB.setCrashed();
-                            totalAirplanesCrashed += 2;
+                            gameData.totalAirplanesCrashed += 2;
                             updateCrashes();
                             // returning here means no other planes will crash this frame
                             return true; // something crashed
@@ -1047,7 +1056,7 @@
             airplane.alertContainer = null;
             airplane.alertTimeout = 0;
             alertContainer.visible = false;
-        }, configuration.airplaneSeedTime[currentSeedIndex].alertTime);
+        }, configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime);
     }
 
     function createAlertContainer() {
