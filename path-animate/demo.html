@@ -14,23 +14,23 @@
     var stage;
     var stageWidth;
     var stageHeight;
+    var scaleFactor = 0.5;
     var framerate = 30;
     var framesPerMillisecond = framerate / 1000;
     var millisecondsPerFrame = 1000 / framerate;
     var PIOneEighty = Math.PI / 180;
     var oneEightyPI = 180 / Math.PI;
-    var minFlightTime = 2;
     var maxAnglePerFrame = 360 / 2 / framerate;
-    var crashTimeToRemoval = 5;
-    var airplaneNextId;
-    var totalAirplanesSeen = 0;
-    var totalAirplanesLanded = 0;
-    var totalAirplanesCrashed = 0;
-    var activeAirplaneId = 0;
     var loader;
     var priorPoint;
     var priorMidPoint;
+    var arrayOfLostAirplanes = [];
+    var arrayOfAlertContainers = [];
+    var arrayOfLandingZones = [];
+    var airplaneSpriteSheet;
     var configuration = {
+        crashTimeToRemoval: 5,
+        minFlightTime: 2,
         flightPathAttributes: null,
         airplaneAlert: null,
         airplaneHighlight: null,
@@ -41,16 +41,16 @@
         airportBackground: null,
         landingZones: null
     };
-    var scaleFactor = 0.5;
-    var arrayOfAirplanes = [];
-    var arrayOfLostAirplanes = [];
-    var arrayOfAlertContainers = [];
-    var arrayOfLandingZones = [];
-    var nextAirplaneTime = -1;
-    var airplaneSpriteSheet;
-    var interval;
-    var currentSeedIndex;
-    var airplaneSpawns; // Pre-seed the current level for each airplane spawn
+    var gameData = {
+        airplaneNextId: 0,
+        totalAirplanesSeen: 0,
+        totalAirplanesLanded: 0,
+        totalAirplanesCrashed: 0,
+        nextAirplaneTime: -1,
+        currentSeedIndex: 0,
+        airplaneSpawns: null, // Pre-seed the current level for each airplane spawn
+        arrayOfAirplanes: []
+    }
 
     function debugLog(message) {
         if (debug) {
@@ -164,8 +164,8 @@
     }
 
     function getNextAirplane() {
-        if (airplaneSpawns.length > 0) {
-            var nextAirplaneType = airplaneSpawns.shift();
+        if (gameData.airplaneSpawns.length > 0) {
+            var nextAirplaneType = gameData.airplaneSpawns.shift();
             if (nextAirplaneType === 1) {
                 return configuration.chopperSprites;
             } else if (nextAirplaneType === 2) {
@@ -201,64 +201,96 @@
     function updateScore() {
         var scoreField = stage.getChildByName("score");
         if (scoreField != null) {
-            scoreField.text = totalAirplanesSeen.toString() + " / " + totalAirplanesLanded;
+            scoreField.text = gameData.totalAirplanesSeen.toString() + " / " + gameData.totalAirplanesLanded;
         }
     }
 
     function updateCrashes() {
         var crashField = stage.getChildByName("crashes");
         if (crashField != null) {
-            crashField.text = totalAirplanesCrashed.toString();
+            crashField.text = gameData.totalAirplanesCrashed.toString();
         }
     }
 
     function createAirplane(currentTime) {
+        var airplaneSize;
+        var airplaneSprite;
+        gameData.airplaneNextId += 1;
         var nextPlaneType = getNextAirplane();
         var airplaneFrame = nextPlaneType.frame;
-        var airplaneSpeed = nextPlaneType.speed;
-        var airplane = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
         var longestSide = 0;
-        if (airplane != null) {
-            var airplaneSize = airplane.getBounds();
+        var airplane = {
+            active: false,
+            activeTime: currentTime + configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime,
+            speed: nextPlaneType.speed,
+            updateInterval: longestSide * 0.5,
+            type: airplaneFrame,
+            id: gameData.airplaneNextId,
+            flightData: flightData.getNextFlightNumber(airplaneFrame),
+            scheduledArrival: new Date(Date.now() + (1000 * 60 * 150)), // TODO: figure out what makes sense for scheduled arrival times
+            timeoutId: 0,
+            crashTimeout: configuration.crashTimeToRemoval,
+            flightTime: 0,
+            arrivalTime: 0,
+            isCrashed: false,
+            isLanding: false,
+            sprite: null,
+            shadow: null,
+            highlight: null,
+            x: 0,
+            y: 0,
+            rotation: 0,
+            width: 0,
+            height: 0,
+            elevation: 50,
+            range: null,
+            alertContainer: null,
+            graphicsFillCommand: null,
+            graphicsStrokeCommand: null
+        };
+
+        // airplane visual representation is a sprite animation
+        airplaneSprite = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
+        if (airplaneSprite != null) {
+            airplane.sprite = airplaneSprite;
+            airplaneSprite.airplane = airplane;
+
+            // Container will hold all airplane visual assets: sprite, shadow, track, highlight, effects.
+            var airplaneContainer = new createjs.Container();
+            airplaneContainer.x = 0;
+            airplaneContainer.y = 0;
+            airplaneContainer.width = stageWidth;
+            airplaneContainer.height = stageHeight;
+
+            airplaneSize = airplaneSprite.getBounds();
+            airplaneSprite.width = airplaneSize.width;
+            airplaneSprite.height = airplaneSize.height;
+            airplaneSprite.regX = airplaneSize.width * 0.5;
+            airplaneSprite.regY = airplaneSize.height * 0.5;
+
             airplane.width = airplaneSize.width;
             airplane.height = airplaneSize.height;
             longestSide = Math.max(airplane.width, airplane.height);
-            airplane.active = false
-            airplane.activeTime = currentTime + configuration.airplaneSeedTime[currentSeedIndex].alertTime;
-            airplane.radius = longestSide * 0.6;
-            airplane.regX = airplane.width * 0.5;
-            airplane.regY = airplane.height * 0.5;
-            airplane.rotation = 0;
-            airplane.speed = airplaneSpeed;
             airplane.updateInterval = longestSide * 0.5;
-            airplane.type = airplaneFrame;
-            airplane.id = airplaneNextId;
-            airplane.flightData = flightData.getNextFlightNumber(airplaneFrame);
-            airplane.flightData.scheduledArrival = new Date(Date.now() + (1000 * 60 * 150)); // TODO: figure out what makes sense for scheduled arrival times
-            airplane.timeoutId = 0;
-            airplane.crashTimeout = crashTimeToRemoval;
-            airplane.flightTime = 0;
-            airplane.arrivalTime = 0;
-            airplane.isCrashed = false;
-            airplane.isLanding = false;
-            airplane.alertContainer = null;
-            airplane.graphicsFillCommand = null;
-            airplane.graphicsStrokeCommand = null;
+            airplane.radius = longestSide * 0.6;
             airplane.range = {
                 x: -1 * airplaneSize.width,
                 y: -1 * airplaneSize.height,
                 width: stageWidth + airplaneSize.width,
                 height: stageHeight + airplaneSize.height
             };
-            airplaneNextId += 1;
-            arrayOfAirplanes.push(airplane);
 
-            // Container will hold all airplane visual assets: sprite, track, highlight, effects.
-            var airplaneContainer = new createjs.Container();
-            airplaneContainer.x = 0;
-            airplaneContainer.y = 0;
-            airplaneContainer.width = stageWidth;
-            airplaneContainer.height = stageHeight;
+            // shadow of the airplane
+            var airplaneShadow = airplane.sprite.clone();
+            var shadowHeight = airplane.elevation;
+            airplaneShadow.name = "shadow";
+            airplaneShadow.alpha = 0.8;
+            airplaneShadow.filters = [
+                new createjs.ColorFilter(0, 0, 0, 1, 0, 0, 0),
+                new createjs.BlurFilter(5, 5, 10)
+            ];
+            airplaneShadow.cache(0, 0, airplane.width + shadowHeight, airplane.height + shadowHeight);
+            airplane.shadow = airplaneShadow;
 
             // Shape to hold the flight path and an array to record each point on the flight path
             var drawingCanvas = new createjs.Shape();
@@ -272,392 +304,440 @@
             airplane.graphicsStrokeCommand = graphics.beginStroke(configuration.airplaneAlert.strokeColor).command;
             airplane.graphicsFillCommand = graphics.beginFill(configuration.airplaneAlert.fillColor).command;
             graphics.drawCircle(0, 0, airplane.radius * 1.05);
+            airplane.highlight = highlight;
 
             // define the hit area for the sprite by reusing the highlight
-            var hitarea = highlight.clone(); // new createjs.Shape(hitgraphics);
+            var hitarea = highlight.clone();
             var radius = airplane.radius * 1.15; // make the hit area a little larger than the actual airplane radius
-            hitarea.setTransform(0, 0, 1, 1, 0, 0, 0, -1 * airplane.regX, -1 * airplane.regY);
-            airplane.hitArea = hitarea;
+            hitarea.setTransform(0, 0, 1, 1, 0, 0, 0, -1 * airplaneSprite.regX, -1 * airplaneSprite.regY);
+            airplaneSprite.hitArea = hitarea;
 
-            highlight.x = airplane.x;
-            highlight.y = airplane.y;
             highlight.alpha = 0.5;
             highlight.visible = true;
             highlight.name = "highlight";
             highlight.cache(longestSide * -1, longestSide * -1, 2 * longestSide, 2 * longestSide);
 
             // add DisplayObjects in drawing order
+            airplaneContainer.addChild(airplaneShadow);
             airplaneContainer.addChild(drawingCanvas);
             airplaneContainer.addChild(highlight);
-            airplaneContainer.addChild(airplane);
+            airplaneContainer.addChild(airplaneSprite);
             stage.addChild(airplaneContainer);
+        }
 
-            // highlight
-            airplane.changeHighlightColor = function (newFillColor, newStrokeColor) {
-                if (this.graphicsFillCommand != null && newFillColor) {
-                    this.graphicsFillCommand.style = newFillColor;
-                }
-                if (this.graphicsStrokeCommand != null && newStrokeColor) {
-                    this.graphicsStrokeCommand.style = newStrokeColor;
-                }
-                var highlight = this.parent.getChildByName("highlight");
-                if (highlight != null) {
-                    highlight.updateCache();
-                }
-            };
-
-            airplane.setHighlight = function () {
-                this.changeHighlightColor(configuration.airplaneHighlight.fillColor, configuration.airplaneHighlight.strokeColor);
-            };
-
-            airplane.setSelected = function () {
-                this.changeHighlightColor(configuration.airplaneSelected.fillColor, configuration.airplaneSelected.strokeColor);
-            };
-
-            airplane.setAlert = function () {
-                this.changeHighlightColor(configuration.airplaneAlert.fillColor, configuration.airplaneAlert.strokeColor);
-            };
-
-            airplane.setWarning = function () {
-                this.changeHighlightColor(configuration.airplaneWarning.fillColor, configuration.airplaneWarning.strokeColor);
-                // after warning clears set the prior highlight back, that that means we need to know what it was.
-                // airplane.timeoutId = window.setTimeout(airplane.setHighlight.bind(airplane), 3000);
-            };
-
-            airplane.setStartPosition = function () {
-                var quadrant = Math.floor(Math.random() * 4); // determines which side airplane will enter from
-                var finalPosition = {};
-
-                if (quadrant < 2) {
-                    // airplane coming from either top or below
-                    this.x = Math.floor(Math.random() * canvas.width);
-                    finalPosition.x = Math.floor(Math.random() * canvas.width);
-
-                    if (quadrant === 0) {
-                        // airplane coming from top
-                        this.y = 0 - this.height;
-                        finalPosition.y = canvas.height + this.height;
-                    } else {
-                        // airplane coming from below
-                        this.y = canvas.height + this.height;
-                        finalPosition.y = 0 - this.height;
-                    }
-                } else {
-                    // airplane coming from either right or left
-                    this.y = Math.floor(Math.random() * canvas.height);
-                    finalPosition.y = Math.floor(Math.random() * canvas.height);
-
-                    if (quadrant === 2) {
-                        // airplane coming from left
-                        this.x = 0 - this.height;
-                        finalPosition.x = canvas.width + this.height;
-                    } else {
-                        // airplane coming from right
-                        this.x = canvas.width + this.height;
-                        finalPosition.x = 0 - this.height;
-                    }
-                }
-                this.movePlane(finalPosition);
-                debugLog("A " + this.id + " start(" + this.x + "," + this.y + ") going to (" + finalPosition.x + "," + finalPosition.y + ") at angle " + this.rotation);
-                this.updatePosition(0, framesPerMillisecond);
-            };
-
-            airplane.setCrashed = function() {
-                this.isCrashed = true;
-                if (this.alertContainer != null) {
-                    window.clearTimeout(this.alertTimeout);
-                    this.alertTimeout = 0;
-                    this.alertContainer.visible = false;
-                    this.alertContainer = null;
-                }
-                this.crashTimeout = crashTimeToRemoval;
-                this.setAlert();
+        // highlight
+        airplane.changeHighlightColor = function (newFillColor, newStrokeColor) {
+            var airplaneSprite = this.sprite;
+            if (this.graphicsFillCommand != null && newFillColor) {
+                this.graphicsFillCommand.style = newFillColor;
             }
+            if (this.graphicsStrokeCommand != null && newStrokeColor) {
+                this.graphicsStrokeCommand.style = newStrokeColor;
+            }
+            var highlight = airplaneSprite.parent.getChildByName("highlight");
+            if (highlight != null) {
+                highlight.updateCache();
+            }
+        };
 
-            // time is running time since started. DeltaTime is milliseconds since last tick.
-            // Return true if we should continue updating this position.
-            airplane.updatePosition = function(time, deltaTime) {
-                var airplaneContainer = this.parent;
-                if (this.isCrashed) {
-                    this.crashTimeout -= deltaTime;
-                    if (airplaneContainer != null) {
-                        airplaneContainer.alpha = this.crashTimeout / crashTimeToRemoval;
-                    }
-                    if (this.crashTimeout <= 0) {
-                        this.removeFromGame();
-                    }
-                    return true;
+        airplane.setHighlight = function () {
+            this.changeHighlightColor(configuration.airplaneHighlight.fillColor, configuration.airplaneHighlight.strokeColor);
+        };
+
+        airplane.setSelected = function () {
+            this.changeHighlightColor(configuration.airplaneSelected.fillColor, configuration.airplaneSelected.strokeColor);
+        };
+
+        airplane.setAlert = function () {
+            this.changeHighlightColor(configuration.airplaneAlert.fillColor, configuration.airplaneAlert.strokeColor);
+        };
+
+        airplane.setWarning = function () {
+            this.changeHighlightColor(configuration.airplaneWarning.fillColor, configuration.airplaneWarning.strokeColor);
+            // after warning clears set the prior highlight back, that that means we need to know what it was.
+            // airplane.timeoutId = window.setTimeout(airplane.setHighlight.bind(airplane), 3000);
+        };
+
+        airplane.setPosition = function(point) {
+            var sprite = this.sprite;
+            var airplaneContainer = sprite.parent;
+
+            this.x = point.x;
+            this.y = point.y;
+
+            if (sprite != null) {
+                sprite.x = this.x;
+                sprite.y = this.y;
+            }
+            sprite = this.shadow;
+            if (sprite != null) {
+                var shadowHeight = this.elevation;
+                sprite.x = this.x + shadowHeight;
+                sprite.y = this.y + shadowHeight;
+                sprite.alpha = 0.2; // 2 / shadowHeight;
+            }
+            sprite = airplane.highlight;
+            if (sprite != null) {
+                sprite.x = this.x;
+                sprite.y = this.y;
+            }
+        };
+
+        airplane.setStartPosition = function () {
+            var quadrant = Math.floor(Math.random() * 4); // determines which side airplane will enter from
+            var startPoint = {
+                x: 0,
+                y: 0
+            }
+            var finalPosition = {
+                x: 0,
+                y: 0
+            };
+
+            if (quadrant < 2) {
+                // airplane coming from either top or below
+                startPoint.x = Math.floor(Math.random() * canvas.width);
+                finalPosition.x = Math.floor(Math.random() * canvas.width);
+
+                if (quadrant === 0) {
+                    // airplane coming from top
+                    startPoint.y = 0 - this.height;
+                    finalPosition.y = canvas.height + this.height;
+                } else {
+                    // airplane coming from below
+                    startPoint.y = canvas.height + this.height;
+                    finalPosition.y = 0 - this.height;
                 }
+            } else {
+                // airplane coming from either right or left
+                startPoint.y = Math.floor(Math.random() * canvas.height);
+                finalPosition.y = Math.floor(Math.random() * canvas.height);
+
+                if (quadrant === 2) {
+                    // airplane coming from left
+                    startPoint.x = 0 - this.height;
+                    finalPosition.x = canvas.width + this.height;
+                } else {
+                    // airplane coming from right
+                    startPoint.x = canvas.width + this.height;
+                    finalPosition.x = 0 - this.height;
+                }
+            }
+            this.setPosition(startPoint);
+            this.movePlane(finalPosition);
+            debugLog("A " + this.id + " start(" + this.x + "," + this.y + ") going to (" + finalPosition.x + "," + finalPosition.y + ") at angle " + this.rotation);
+            this.updatePosition(0, framesPerMillisecond);
+        };
+
+        // time is running time since started. DeltaTime is milliseconds since last tick.
+        // Return true if we should continue updating this position.
+        airplane.updatePosition = function(time, deltaTime) {
+            var airplaneContainer = this.sprite.parent;
+            if (this.isCrashed) {
+                this.crashTimeout -= deltaTime;
                 if (airplaneContainer != null) {
-                    var drawingCanvas = getAirplaneFlightPathCanvas(this);
-                    if (drawingCanvas != null) {
-                        var flightPath = drawingCanvas.flightPath;
-                        if (flightPath.length > 0) {
-                            if (this.flightPathIndex >= flightPath.length) {
-                                // ran out the path, clear it
-                                drawingCanvas.graphics.clear();
-                                drawingCanvas.flightPath = [];
-                                this.flightPathIndex = 0;
-                            } else {
-                                // we have a flight path to trace.
-                                // examine each point until we find a point in front in current direction, +/- 15 degrees
-                                // if no point, flight path is bad, clear it
-                                var nextPoint = null;
-                                var d;
-                                while (this.flightPathIndex < flightPath.length) {
-                                    nextPoint = flightPath[this.flightPathIndex];
-                                    d = distanceBetweenPoints(nextPoint, airplane);
-                                    if (d < this.updateInterval) {
-                                        // distance to next point is too small or we passed it, ignore it and get the next point
-                                        this.flightPathIndex++;
-                                    } else {
-                                        break;
-                                    }
+                    airplaneContainer.alpha = this.crashTimeout / configuration.crashTimeToRemoval;
+                }
+                if (this.crashTimeout <= 0) {
+                    this.removeFromGame();
+                }
+                return true;
+            }
+            if (airplaneContainer != null) {
+                var drawingCanvas = getAirplaneFlightPathCanvas(this);
+                if (drawingCanvas != null) {
+                    var flightPath = drawingCanvas.flightPath;
+                    if (flightPath.length > 0) {
+                        if (this.flightPathIndex >= flightPath.length) {
+                            // ran out the path, clear it
+                            drawingCanvas.graphics.clear();
+                            drawingCanvas.flightPath = [];
+                            this.flightPathIndex = 0;
+                        } else {
+                            // we have a flight path to trace.
+                            // examine each point until we find a point in front in current direction, +/- 15 degrees
+                            // if no point, flight path is bad, clear it
+                            var nextPoint = null;
+                            var d;
+                            while (this.flightPathIndex < flightPath.length) {
+                                nextPoint = flightPath[this.flightPathIndex];
+                                d = distanceBetweenPoints(nextPoint, airplane);
+                                if (d < this.updateInterval) {
+                                    // distance to next point is too small or we passed it, ignore it and get the next point
+                                    this.flightPathIndex++;
+                                } else {
+                                    break;
                                 }
-                                if (nextPoint != null) {
-                                    // compute what the angle will be to the next point and compare it with the current angle
-                                    // TODO: Clean up this code for performance
-                                    var angle = angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y);
-                                    var deltaAngle = airplane.rotation - angle;
-                                    var deltaAngleZ = Math.abs(deltaAngle);
-                                    // TODO: when crossing 0/359 we have to account for that
-                                    // var deltaAngle = Math.abs(airplane.rotation - angleOfLine(airplane, nextPoint));
-                                    debugLog("R=" + airplane.rotation + ", dA=" + deltaAngle);
-                                    if (deltaAngle <= maxAnglePerFrame || (deltaAngle > (360 - maxAnglePerFrame))) {
-                                        this.movePlane(nextPoint);
-                                    } else {
-                                        // if new angle is too great then flight path is no good, clear it
-                                        drawingCanvas.graphics.clear();
-                                        drawingCanvas.flightPath = [];
-                                        this.flightPathIndex = 0;
-                                    }
+                            }
+                            if (nextPoint != null) {
+                                // compute what the angle will be to the next point and compare it with the current angle
+                                // TODO: Clean up this code for performance
+                                var angle = angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y);
+                                var deltaAngle = airplane.rotation - angle;
+                                var deltaAngleZ = Math.abs(deltaAngle);
+                                // TODO: when crossing 0/359 we have to account for that
+                                // var deltaAngle = Math.abs(airplane.rotation - angleOfLine(airplane, nextPoint));
+                                debugLog("R=" + airplane.rotation + ", dA=" + deltaAngle);
+                                if (deltaAngle <= maxAnglePerFrame || (deltaAngle > (360 - maxAnglePerFrame))) {
+                                    this.movePlane(nextPoint);
+                                } else {
+                                    // if new angle is too great then flight path is no good, clear it
+                                    drawingCanvas.graphics.clear();
+                                    drawingCanvas.flightPath = [];
+                                    this.flightPathIndex = 0;
                                 }
                             }
                         }
                     }
-                    var highlight = airplaneContainer.getChildAt(1);
-                    var radians = this.rotation * PIOneEighty;
-                    var timeSpeedAdjustment = this.speed * (framesPerMillisecond / deltaTime);
-                    this.x += Math.sin(radians) * timeSpeedAdjustment;
-                    this.y -= Math.cos(radians) * timeSpeedAdjustment;
-                    highlight.x = this.x;
-                    highlight.y = this.y;
-                    this.flightTime += deltaTime;
                 }
-                return (this.flightTime < minFlightTime) || this.isVisible();
-            };
-
-            airplane.isVisible = function() {
-                return this.x > this.range.x
-                    && this.x < this.range.width
-                    && this.y > this.range.y
-                    && this.y < this.range.height;
+                var radians = this.rotation * PIOneEighty;
+                var timeSpeedAdjustment = this.speed * (framesPerMillisecond / deltaTime);
+                this.setPosition({
+                    x: this.x + (Math.sin(radians) * timeSpeedAdjustment),
+                    y: this.y - (Math.cos(radians) * timeSpeedAdjustment)
+                })
+                this.flightTime += deltaTime;
             }
+            return (this.flightTime < configuration.minFlightTime) || this.isVisible();
+        };
 
-            airplane.isAlignedForLanding = function() {
-                // test if airplane aligns with a landing zone
-                var i;
-                var zone;
-                var isAligned = false;
-                var isChopper = false;
-                for (i = 0; i < arrayOfLandingZones.length; i ++) {
-                    zone = arrayOfLandingZones[i];
-                    if (airplane.type == "chopper" && zone.circle != null) {
-                        isChopper = true;
-                        isAligned = distanceBetweenPoints(airplane, zone.circle) <= zone.circle.r;
-                    } else if (airplane.type != "chopper" && zone.polygon != null) {
-                        isAligned = pointInsidePolygon(this, zone.polygon) && slopeMatch(this, zone);
-                    }
-                    if (isAligned) {
-                        this.isLanding = true;
-                        this.arrivalTime = Date.now();
-                        totalAirplanesLanded += 1;
-                        zone.landedCount += 1;
-                        var drawingCanvas = getAirplaneFlightPathCanvas(this);
-                        drawingCanvas.graphics.clear();
-                        drawingCanvas.flightPath = [];
-                        this.flightPathIndex = 0;
-                        updateScore();
-                        if (isChopper) {
-                            var scaleTo = 0.75;
-                            airplane.speed = 0;
-                            createjs.Tween.get(this)
-                                .to({scaleX: scaleTo, scaleY: scaleTo, x: zone.circle.x, y: zone.circle.y}, 4000, createjs.Ease.quadIn)
-                                .call(function(airplane) {
-                                    airplane.removeFromGame();
-                                }, [this]);
-                        } else {
-                            // this.rotation = zone.landingRotation;
-                            var speedUp = this.speed * 1.8;
-                            var speedDown = 0.1;
-                            var scaleTo = 0.75;
-                            createjs.Tween.get(this)
-                                .to({rotation: zone.landingRotation, speed: speedUp}, 1000, createjs.Ease.quadIn)
-                                .to({scaleX: scaleTo, scaleY: scaleTo}, 3000, createjs.Ease.quadIn)
-                                .to({speed: 0.2}, 4000, createjs.Ease.quadOut)
-                                .call(function(airplane) {
-                                    airplane.removeFromGame();
-                                }, [this]);
-                        }
-                        return true;
-                    }
-                }
-                return false;
-            }
+        airplane.isVisible = function() {
+            return this.x > this.range.x
+                && this.x < this.range.width
+                && this.y > this.range.y
+                && this.y < this.range.height;
+        }
 
-            airplane.removeFromGame = function() {
-                var airplaneIndex = airplaneIndexFromId(this.id);
-                if (activeAirplaneId == this.id) {
-                    activeAirplaneId = 0;
+        airplane.isAlignedForLanding = function() {
+            // test if airplane aligns with a landing zone
+            var i;
+            var zone;
+            var isAligned = false;
+            var isChopper = false;
+            for (i = 0; i < arrayOfLandingZones.length; i ++) {
+                zone = arrayOfLandingZones[i];
+                if (airplane.type == "chopper" && zone.circle != null) {
+                    isChopper = true;
+                    isAligned = distanceBetweenPoints(airplane, zone.circle) <= zone.circle.r;
+                } else if (airplane.type != "chopper" && zone.polygon != null) {
+                    isAligned = pointInsidePolygon(this, zone.polygon) && slopeMatch(this, zone);
                 }
-                if (this.timeoutId > 0) {
-                    window.clearTimeout(this.timeoutId);
-                    this.timeoutId = 0;
-                }
-                this.removeAllEventListeners();
-                this.scaleX = 1;
-                this.scaleY = 1;
-                var airplaneContainer = this.parent;
-                if (airplaneContainer != null) {
-                    var highlight = airplaneContainer.getChildByName("highlight");
-                    if (highlight != null) {
-                        createjs.Tween.removeTweens(highlight);
-                    }
-                    airplaneContainer.removeAllChildren();
-                    stage.removeChild(airplaneContainer);
-                }
-                if (airplaneIndex >= 0) {
-                    arrayOfAirplanes.splice(airplaneIndex, 1);
-                }
-            }
-
-            airplane.activate = function(event) {
-                if (!event.primary) { return; }
-
-                // clear the prior drawing on this airplane
-                var airplane = event.target;
-                if (airplane != null) {
-                    if (airplane.isCrashed || airplane.isLanding) {
-                        return;
-                    }
-                    var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+                if (isAligned) {
+                    this.isLanding = true;
+                    this.arrivalTime = Date.now();
+                    gameData.totalAirplanesLanded += 1;
+                    zone.landedCount += 1;
+                    var drawingCanvas = getAirplaneFlightPathCanvas(this);
                     drawingCanvas.graphics.clear();
                     drawingCanvas.flightPath = [];
-                    airplane.flightPathIndex = 0;
-
-                    // Remove selected indicator from current selection.
-                    if (activeAirplaneId != 0) {
-                        var priorSelectedAirplane = getActiveAirplane();
-                        if (priorSelectedAirplane != null) {
-                            priorSelectedAirplane.setHighlight();
+                    this.flightPathIndex = 0;
+                    this.highlight.visible = false;
+                    updateScore();
+                    var scaleTo = 0.75;
+                    if (isChopper) {
+                        // Chopper landing sequence
+                        airplane.speed = 0;
+                        createjs.Tween.get(this)
+                            .to({scaleX: scaleTo, scaleY: scaleTo, x: zone.circle.x, y: zone.circle.y, elevation: 5}, 4000, createjs.Ease.quadOut)
+                            .wait(1000)
+                            .call(function(airplane) {
+                                airplane.removeFromGame();
+                            }, [this]);
+                        createjs.Tween.get(this.sprite)
+                            .to({scaleX: scaleTo, scaleY: scaleTo, x: zone.circle.x, y: zone.circle.y}, 4000, createjs.Ease.quadOut);
+                        createjs.Tween.get(this.shadow, { onChange: function(event) {
+                                    event.target.target.alpha= 1;
+                                    event.target.target.updateCache();
+                                }})
+                            .to({scaleX: scaleTo, scaleY: scaleTo, x: zone.circle.x, y: zone.circle.y, alpha: 1}, 4000, createjs.Ease.quadOut);
+                    } else {
+                        // Airplane landing sequence
+                        var speedUp = this.speed * 1.8;
+                        var speedDown = 0.1;
+                        var deltaAngle = (zone.landingRotation - this.rotation) % 360;
+ 
+        				if (deltaAngle > 180) {
+                            deltaAngle -= 360;
+                        } else if (deltaAngle < -180) {
+                            deltaAngle += 360;
                         }
+                        deltaAngle = this.rotation + deltaAngle;
+                        createjs.Tween.get(this)
+                            .to({rotation: deltaAngle, speed: speedUp}, 1000, createjs.Ease.quadIn)
+                            .to({elevation: 5}, 3000, createjs.Ease.quadIn)
+                            .to({speed: 0.1}, 4000, createjs.Ease.quadOut)
+                            .wait(1000)
+                            .call(function(airplane) {
+                                airplane.removeFromGame();
+                            }, [this]);
+                        createjs.Tween.get(this.sprite)
+                            .to({rotation: deltaAngle}, 1000, createjs.Ease.quadIn)
+                            .to({scaleX: scaleTo, scaleY: scaleTo}, 3000, createjs.Ease.quadIn);
+                        createjs.Tween.get(this.shadow)
+                            .to({rotation: deltaAngle}, 1000, createjs.Ease.quadIn)
+                            .to({scaleX: scaleTo, scaleY: scaleTo, alpha: 1}, 3000, createjs.Ease.quadIn);
                     }
-                    airplane.setSelected();
-                    activeAirplaneId = airplane.id;
-
-                    // register the starting point and track the mouse
-                    priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
-                    priorMidPoint = priorPoint.clone();
-                    airplane.addEventListener("pressmove", airplane.handleMouseMove);
-                    airplane.addEventListener("pressup", airplane.handleMouseUp);
+                    return true;
                 }
             }
-
-            airplane.handleMouseMove = function(event) {
-                if (!event.primary) { return; }
-                var airplane = event.target;
-                if (airplane != null) {
-                    if (airplane.isCrashed || airplane.isLanding) {
-                        return;
-                    }
-                    var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
-                    if (drawingCanvas != null) {
-                        var mouseX = stage.mouseX;
-                        var mouseY = stage.mouseY;
-                        var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
-
-                        drawingCanvas.graphics
-                            .setStrokeStyle(configuration.flightPathAttributes.lineWidth, 'round', 'round')
-                            .beginStroke(configuration.flightPathAttributes.lineColor)
-                            .moveTo(midPt.x, midPt.y)
-                            .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
-
-                        priorPoint.x = mouseX;
-                        priorPoint.y = mouseY;
-                        priorMidPoint.x = midPt.x;
-                        priorMidPoint.y = midPt.y;
-                        drawingCanvas.flightPath.push({x: mouseX, y: mouseY});
-                    }
-                }
-            }
-
-            airplane.handleMouseUp = function(event) {
-                if (!event.primary) { return; }
-
-                var airplane = event.target;
-                if (airplane != null) {
-                    // stop tracking mouse
-                    airplane.removeEventListener("pressmove", airplane.handleMouseMove);
-                    airplane.removeEventListener("pressup", airplane.handleMouseUp);
-                }
-            }
-
-            airplane.movePlane = function (toPosition) {
-                // Update rotation of airplane based on target point
-                this.rotation = angleOfAirplane(this, this.x - toPosition.x, this.y - toPosition.y);
-                // this.rotation = angleOfLine(this, toPosition);
-            }
-
-            airplane.toString = function() {
-                return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.isCrashed ? " CRASHED" : "");
-            }
-
-            airplane.addEventListener("mousedown", airplane.activate.bind(airplane));
-            airplane.setHighlight();
-            createjs.Tween.get(highlight, { loop: -1 })
-                .to({ alpha: 0 }, 1000, createjs.Ease.getElasticIn(2, 5))
-                .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
-
-            // position plane in its parent container
-            airplane.setStartPosition();
-            showFlightStatus(airplane);
+            return false;
         }
+
+        airplane.setCrashed = function() {
+            this.isCrashed = true;
+            if (this.alertContainer != null) {
+                window.clearTimeout(this.alertTimeout);
+                this.alertTimeout = 0;
+                this.alertContainer.visible = false;
+                this.alertContainer = null;
+            }
+            this.crashTimeout = configuration.crashTimeToRemoval;
+            this.setAlert();
+        }
+
+        airplane.removeFromGame = function() {
+            var airplaneIndex = airplaneIndexFromId(this.id);
+            if (airplaneIndex >= 0) {
+                gameData.arrayOfAirplanes.splice(airplaneIndex, 1);
+            }
+            if (this.timeoutId > 0) {
+                window.clearTimeout(this.timeoutId);
+                this.timeoutId = 0;
+            }
+            this.sprite.removeAllEventListeners();
+            this.sprite.airplane = null;
+            this.sprite.scaleX = 1;
+            this.sprite.scaleY = 1;
+            var airplaneContainer = this.sprite.parent;
+            if (airplaneContainer != null) {
+                var highlight = airplaneContainer.getChildByName("highlight");
+                if (highlight != null) {
+                    createjs.Tween.removeTweens(highlight);
+                }
+                airplaneContainer.removeAllChildren();
+                stage.removeChild(airplaneContainer);
+            }
+            this.sprite = null;
+            this.shadow = null;
+            this.highlight = null;
+        }
+
+        airplane.activate = function(event) {
+            if (!event.primary) { return; }
+
+            // clear the prior drawing on this airplane
+            var airplaneSprite = event.target;
+            if (airplaneSprite != null) {
+                var airplane = airplaneSprite.airplane;
+                if (airplane.isCrashed || airplane.isLanding) {
+                    return;
+                }
+                var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+                drawingCanvas.graphics.clear();
+                drawingCanvas.flightPath = [];
+                airplane.flightPathIndex = 0;
+
+                airplane.setSelected();
+
+                // register the starting point and track the mouse
+                priorPoint = new createjs.Point(stage.mouseX, stage.mouseY);
+                priorMidPoint = priorPoint.clone();
+                airplaneSprite.addEventListener("pressmove", airplane.handleMouseMove);
+                airplaneSprite.addEventListener("pressup", airplane.handleMouseUp);
+            }
+        }
+
+        airplane.handleMouseMove = function(event) {
+            if (!event.primary) { return; }
+            var airplairplaneSpriteane = event.target;
+            if (airplaneSprite != null) {
+                var airplane = airplaneSprite.airplane;
+                if (airplane.isCrashed || airplane.isLanding) {
+                    return;
+                }
+                var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+                if (drawingCanvas != null) {
+                    var mouseX = stage.mouseX;
+                    var mouseY = stage.mouseY;
+                    var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
+
+                    drawingCanvas.graphics
+                        .setStrokeStyle(configuration.flightPathAttributes.lineWidth, 'round', 'round')
+                        .beginStroke(configuration.flightPathAttributes.lineColor)
+                        .moveTo(midPt.x, midPt.y)
+                        .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
+
+                    priorPoint.x = mouseX;
+                    priorPoint.y = mouseY;
+                    priorMidPoint.x = midPt.x;
+                    priorMidPoint.y = midPt.y;
+                    drawingCanvas.flightPath.push({x: mouseX, y: mouseY});
+                }
+            }
+        }
+
+        airplane.handleMouseUp = function(event) {
+            if (!event.primary) { return; }
+
+            var airplaneSprite = event.target;
+            if (airplaneSprite != null) {
+                var airplane = airplaneSprite.airplane;
+                // stop tracking mouse
+                airplaneSprite.removeEventListener("pressmove", airplane.handleMouseMove);
+                airplaneSprite.removeEventListener("pressup", airplane.handleMouseUp);
+                airplane.setHighlight();
+            }
+        }
+
+        airplane.movePlane = function (toPosition) {
+            // Update rotation of airplane based on target point
+            this.rotation = angleOfAirplane(this, this.x - toPosition.x, this.y - toPosition.y);
+            this.sprite.rotation = this.rotation;
+            this.shadow.rotation = this.rotation;
+        }
+
+        airplane.toString = function() {
+            return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.isCrashed ? " CRASHED" : "");
+        }
+
+        airplane.setHighlight();
+        createjs.Tween.get(highlight, { loop: -1 })
+            .to({ alpha: 0 }, 1000, createjs.Ease.getElasticIn(2, 5))
+            .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
+
+        // position plane in its parent container
+        airplane.sprite.addEventListener("mousedown", airplane.activate.bind(airplane));
+        gameData.arrayOfAirplanes.push(airplane);
+        airplane.setStartPosition();
+        showFlightStatus(airplane);
         return airplane;
     }
 
     function airplaneIndexFromId(airplaneId) {
-        for (var index = 0; index < arrayOfAirplanes.length; index ++) {
-            if (airplaneId == arrayOfAirplanes[index].id) {
+        for (var index = 0; index < gameData.arrayOfAirplanes.length; index ++) {
+            if (airplaneId == gameData.arrayOfAirplanes[index].id) {
                 return index;
             }
         }
         return 0;
     }
 
-    function getActiveAirplane() {
-        var activeIndex = airplaneIndexFromId(activeAirplaneId);
-        if (activeIndex >= 0 && activeIndex < arrayOfAirplanes.length) {
-            return arrayOfAirplanes[activeIndex];
-        }
-        return null;
-    }
-
     function getAirplaneFlightPathCanvas(airplane) {
-        if (airplane != null && airplane.parent != null) {
-            return airplane.parent.getChildByName("flight-path");
+        if (airplane != null && airplane.sprite != null && airplane.sprite.parent != null) {
+            return airplane.sprite.parent.getChildByName("flight-path");
         }
         return null;
     }
 
     function updateAirplanePosition(time, deltaTime) {
-        arrayOfAirplanes.forEach(function(airplane) {
+        gameData.arrayOfAirplanes.forEach(function(airplane) {
             if (airplane.active) {
                 if ( ! airplane.updatePosition(time, deltaTime)) {
-                arrayOfLostAirplanes.push(airplane);
+                    arrayOfLostAirplanes.push(airplane);
                 } 
             } else if (time >= airplane.activeTime) {
                 airplane.active = true;
-                totalAirplanesSeen ++;
+                gameData.totalAirplanesSeen ++;
                 updateScore();
             }
         });
@@ -672,6 +752,7 @@
 
     function generateSpawns() {
         // generates all airplane spawns for the current level
+        var currentSeedIndex = gameData.currentSeedIndex;
         var currentSeed = configuration.airplaneSeedTime[currentSeedIndex];
         var previousCount = 0; // previous count defaults to 0 for when seed = 0
         if (currentSeedIndex > 0) {
@@ -681,7 +762,7 @@
         var i;
         var nextSpawn;
         var duplicateSpawnCounter;
-        airplaneSpawns = [];
+        var airplaneSpawns = [];
         for (i = 0; i < totalSpawns; i ++) {
             airplaneSpawns[i] = 0;
         }
@@ -720,20 +801,23 @@
                 airplaneSpawns[i] = 3 + Math.floor(Math.random() * configuration.airplaneSprites.length);
             }
         }
+        gameData.airplaneSpawns = airplaneSpawns;
     }
 
     function seedNextAirplane(currentTime, deltaTime) {
-        if (arrayOfAirplanes.length < configuration.airplaneSeedTime[currentSeedIndex].max
-          && (nextAirplaneTime == 0 || (currentTime > nextAirplaneTime))) {
-            if (airplaneSpawns.length < 1) {
-                if (totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count
+        var currentSeedIndex = gameData.currentSeedIndex;
+        if (gameData.arrayOfAirplanes.length < configuration.airplaneSeedTime[currentSeedIndex].max
+          && (gameData.nextAirplaneTime == 0 || (currentTime > gameData.nextAirplaneTime))) {
+            if (gameData.airplaneSpawns.length < 1) {
+                if (gameData.totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count
                   && (currentSeedIndex < (configuration.airplaneSeedTime.length - 1))) {
                     currentSeedIndex += 1;
+                    gameData.currentSeedIndex = currentSeedIndex;
                 }
                 generateSpawns();
             }
             createAirplane(currentTime);
-            nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
+            gameData.nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
         }
     }
 
@@ -810,10 +894,10 @@
     }
 
     function handleLoadComplete() {
-        airplaneNextId = 1;
-        currentSeedIndex = 0;
-        airplaneSpawns = [];
-        nextAirplaneTime = 0;
+        gameData.airplaneNextId = 0;
+        gameData.currentSeedIndex = 0;
+        gameData.airplaneSpawns = [];
+        gameData.nextAirplaneTime = 0;
         createSprites();
         createBackground();
         createLandingZones();
@@ -939,7 +1023,7 @@
     }
 
     function collisionDetection() {
-        var numberOfAirplanes = arrayOfAirplanes.length;
+        var numberOfAirplanes = gameData.arrayOfAirplanes.length;
         if (numberOfAirplanes < 1) {
             return;
         }
@@ -948,15 +1032,15 @@
         var i;
         var j;
         for (i = 0; i < numberOfAirplanes - 1; i++) {
-            planeA = arrayOfAirplanes[i];
+            planeA = gameData.arrayOfAirplanes[i];
             if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding && ! planeA.isAlignedForLanding()) {
                 for (j = i + 1; j < numberOfAirplanes; j++) {
-                    planeB = arrayOfAirplanes[j];
+                    planeB = gameData.arrayOfAirplanes[j];
                     if (planeB.active && ! planeB.isCrashed && ! planeB.isLanding) {
                         if (distanceBetweenPoints(planeA, planeB) < (planeA.radius + planeB.radius)) {
                             planeA.setCrashed();
                             planeB.setCrashed();
-                            totalAirplanesCrashed += 2;
+                            gameData.totalAirplanesCrashed += 2;
                             updateCrashes();
                             // returning here means no other planes will crash this frame
                             return true; // something crashed
@@ -966,7 +1050,7 @@
             }
         }
         // if we get here the last plane was not checked for landing
-        planeA = arrayOfAirplanes[numberOfAirplanes - 1];
+        planeA = gameData.arrayOfAirplanes[numberOfAirplanes - 1];
         if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding) {
             planeA.isAlignedForLanding();
         }
@@ -1006,7 +1090,7 @@
     function showNewAirplaneAlert(airplane) {
         var alertContainer = getFreeAlertContainer();
         var child;
-        var airplaneFrame = airplane.currentAnimation;
+        var airplaneFrame = airplane.sprite.currentAnimation;
         // show a small icon of the airplane
         child = alertContainer.getChildByName("sprite");
         if (child != null) {
@@ -1026,8 +1110,8 @@
         }
         child = alertContainer.getChildByName("field3");
         if (child != null) {
-            var minutes = airplane.flightData.scheduledArrival.getMinutes();
-            child.text = "A: " + airplane.flightData.scheduledArrival.getHours() + ":" + (minutes < 10 ? "0" + minutes : minutes);
+            var minutes = airplane.scheduledArrival.getMinutes();
+            child.text = "A: " + airplane.scheduledArrival.getHours() + ":" + (minutes < 10 ? "0" + minutes : minutes);
         }
         alertContainer.x = airplane.x;
         if (alertContainer.x < alertContainer.width) {
@@ -1047,7 +1131,7 @@
             airplane.alertContainer = null;
             airplane.alertTimeout = 0;
             alertContainer.visible = false;
-        }, configuration.airplaneSeedTime[currentSeedIndex].alertTime);
+        }, configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime);
     }
 
     function createAlertContainer() {
