@@ -20,7 +20,6 @@
     var millisecondsPerFrame = 1000 / framerate;
     var PIOneEighty = Math.PI / 180;
     var oneEightyPI = 180 / Math.PI;
-    var minFlightTime = 2;
     var maxAnglePerFrame = 360 / 2 / framerate;
     var loader;
     var priorPoint;
@@ -31,6 +30,7 @@
     var airplaneSpriteSheet;
     var configuration = {
         crashTimeToRemoval: 5,
+        minFlightTime: 2,
         flightPathAttributes: null,
         airplaneAlert: null,
         airplaneHighlight: null,
@@ -498,7 +498,7 @@
                 })
                 this.flightTime += deltaTime;
             }
-            return (this.flightTime < minFlightTime) || this.isVisible();
+            return (this.flightTime < configuration.minFlightTime) || this.isVisible();
         };
 
         airplane.isVisible = function() {
