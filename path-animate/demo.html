@@ -235,81 +235,87 @@
             graphicsStrokeCommand: null
         };
 
-        // airplane visual representation is a sprite animation
-        airplaneSprite = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
-        if (airplaneSprite != null) {
-            airplane.sprite = airplaneSprite;
-            airplaneSprite.airplane = airplane;
+        airplane.createSprite = function(parentContainer, airplaneFrame) {
+            // airplane visual representation is a sprite animation
+            airplaneSprite = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
+            if (airplaneSprite != null) {
+                this.sprite = airplaneSprite;
+                airplaneSprite.airplane = this;
 
-            // Container will hold all airplane visual assets: sprite, shadow, track, highlight, effects.
-            var airplaneContainer = new createjs.Container();
-            airplaneContainer.x = 0;
-            airplaneContainer.y = 0;
-            airplaneContainer.width = stageWidth;
-            airplaneContainer.height = stageHeight;
+                // Container will hold all airplane visual assets: sprite, shadow, track, highlight, effects.
+                var airplaneContainer = new createjs.Container();
+                airplaneContainer.x = 0;
+                airplaneContainer.y = 0;
+                airplaneContainer.width = stageWidth;
+                airplaneContainer.height = stageHeight;
 
-            airplaneSize = airplaneSprite.getBounds();
-            airplaneSprite.width = airplaneSize.width;
-            airplaneSprite.height = airplaneSize.height;
-            airplaneSprite.regX = airplaneSize.width * 0.5;
-            airplaneSprite.regY = airplaneSize.height * 0.5;
+                airplaneSize = airplaneSprite.getBounds();
+                airplaneSprite.width = airplaneSize.width;
+                airplaneSprite.height = airplaneSize.height;
+                airplaneSprite.regX = airplaneSize.width * 0.5;
+                airplaneSprite.regY = airplaneSize.height * 0.5;
 
-            airplane.width = airplaneSize.width;
-            airplane.height = airplaneSize.height;
-            longestSide = Math.max(airplane.width, airplane.height);
-            airplane.updateInterval = longestSide * 0.5;
-            airplane.radius = longestSide * 0.6;
-            airplane.range = {
-                x: -1 * airplaneSize.width,
-                y: -1 * airplaneSize.height,
-                width: stageWidth + airplaneSize.width,
-                height: stageHeight + airplaneSize.height
-            };
+                this.width = airplaneSize.width;
+                this.height = airplaneSize.height;
+                longestSide = Math.max(airplaneSize.width, airplaneSize.height);
+                this.updateInterval = longestSide * 0.5;
+                this.radius = longestSide * 0.6;
+                this.range = {
+                    x: -1 * airplaneSize.width,
+                    y: -1 * airplaneSize.height,
+                    width: stageWidth + airplaneSize.width,
+                    height: stageHeight + airplaneSize.height
+                };
 
-            // shadow of the airplane
-            var airplaneShadow = airplane.sprite.clone();
-            var shadowHeight = airplane.elevation;
-            airplaneShadow.name = "shadow";
-            airplaneShadow.alpha = 0.8;
-            airplaneShadow.filters = [
-                new createjs.ColorFilter(0, 0, 0, 1, 0, 0, 0),
-                new createjs.BlurFilter(5, 5, 10)
-            ];
-            airplaneShadow.cache(0, 0, airplane.width + shadowHeight, airplane.height + shadowHeight);
-            airplane.shadow = airplaneShadow;
+                // shadow of the airplane
+                var airplaneShadow = airplaneSprite.clone();
+                var shadowHeight = this.elevation;
+                airplaneShadow.name = "shadow";
+                airplaneShadow.alpha = 0.8;
+                airplaneShadow.filters = [
+                    new createjs.ColorFilter(0, 0, 0, 1, 0, 0, 0),
+                    new createjs.BlurFilter(5, 5, 10)
+                ];
+                airplaneShadow.cache(0, 0, airplaneSize.width + shadowHeight, airplaneSize.height + shadowHeight);
+                this.shadow = airplaneShadow;
 
-            // Shape to hold the flight path and an array to record each point on the flight path
-            var drawingCanvas = new createjs.Shape();
-            drawingCanvas.name = "flight-path";
-            drawingCanvas.flightPath = [];
-            airplane.flightPathIndex = 0;
+                // Shape to hold the flight path and an array to record each point on the flight path
+                var drawingCanvas = new createjs.Shape();
+                drawingCanvas.name = "flight-path";
+                drawingCanvas.flightPath = [];
+                this.flightPathIndex = 0;
 
-            var graphics = new createjs.Graphics();
-            var highlight = new createjs.Shape(graphics);
-            graphics.setStrokeStyle(configuration.airplaneAlertColor.strokeWidth);
-            airplane.graphicsStrokeCommand = graphics.beginStroke(configuration.airplaneAlertColor.strokeColor).command;
-            airplane.graphicsFillCommand = graphics.beginFill(configuration.airplaneAlertColor.fillColor).command;
-            graphics.drawCircle(0, 0, airplane.radius * 1.05);
-            airplane.highlight = highlight;
+                // draw the highlight circle
+                var graphics = new createjs.Graphics();
+                var highlight = new createjs.Shape(graphics);
+                graphics.setStrokeStyle(configuration.airplaneAlertColor.strokeWidth);
+                this.graphicsStrokeCommand = graphics.beginStroke(configuration.airplaneColor.strokeColor).command;
+                this.graphicsFillCommand = graphics.beginFill(configuration.airplaneColor.fillColor).command;
+                graphics.drawCircle(0, 0, this.radius * 1.05);
+                this.highlight = highlight;
 
-            // define the hit area for the sprite by reusing the highlight
-            var hitarea = highlight.clone();
-            var radius = airplane.radius * 1.15; // make the hit area a little larger than the actual airplane radius
-            hitarea.setTransform(0, 0, 1, 1, 0, 0, 0, -1 * airplaneSprite.regX, -1 * airplaneSprite.regY);
-            airplaneSprite.hitArea = hitarea;
+                // define the hit area for the sprite by reusing the highlight
+                var hitarea = highlight.clone();
+                var radius = this.radius * 1.15; // make the hit area a little larger than the actual airplane radius
+                hitarea.setTransform(0, 0, 1, 1, 0, 0, 0, -1 * airplaneSprite.regX, -1 * airplaneSprite.regY);
+                airplaneSprite.hitArea = hitarea;
 
-            highlight.alpha = 0.5;
-            highlight.visible = true;
-            highlight.name = "highlight";
-            highlight.cache(longestSide * -1, longestSide * -1, 2 * longestSide, 2 * longestSide);
+                highlight.alpha = 0.5;
+                highlight.visible = true;
+                highlight.name = "highlight";
+                highlight.cache(longestSide * -1, longestSide * -1, 2 * longestSide, 2 * longestSide);
+                createjs.Tween.get(highlight, { loop: -1 })
+                .to({ alpha: 0.1 }, 1000, createjs.Ease.getElasticIn(2, 5))
+                .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
 
-            // add DisplayObjects in drawing order
-            airplaneContainer.addChild(airplaneShadow);
-            airplaneContainer.addChild(drawingCanvas);
-            airplaneContainer.addChild(highlight);
-            airplaneContainer.addChild(airplaneSprite);
-            stage.addChild(airplaneContainer);
-        }
+                // add DisplayObjects in drawing order
+                airplaneContainer.addChild(airplaneShadow);
+                airplaneContainer.addChild(drawingCanvas);
+                airplaneContainer.addChild(highlight);
+                airplaneContainer.addChild(airplaneSprite);
+                parentContainer.addChild(airplaneContainer);
+            }
+        };
 
         // highlight
         airplane.changeHighlightColor = function (newFillColor, newStrokeColor) {
@@ -684,10 +690,7 @@
             return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.isCrashed ? " CRASHED" : "");
         }
 
-        airplane.setHighlight();
-        createjs.Tween.get(highlight, { loop: -1 })
-            .to({ alpha: 0 }, 1000, createjs.Ease.getElasticIn(2, 5))
-            .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
+        airplane.createSprite(stage, airplaneFrame);
 
         // position plane in its parent container
         airplane.sprite.addEventListener("mousedown", airplane.activate.bind(airplane));
