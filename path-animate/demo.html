@@ -22,6 +22,7 @@
     var oneEightyPI = 180 / Math.PI;
     var maxAnglePerFrame = 360 / 2 / framerate;
     var loader;
+    var activeDrawingCanvas = null;
     var priorPoint;
     var priorMidPoint;
     var arrayOfLostAirplanes = [];
@@ -622,9 +623,9 @@
                 if (airplane.isCrashed || airplane.isLanding) {
                     return;
                 }
-                var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
-                drawingCanvas.graphics.clear();
-                drawingCanvas.flightPath = [];
+                activeDrawingCanvas = getAirplaneFlightPathCanvas(airplane);
+                activeDrawingCanvas.graphics.clear();
+                activeDrawingCanvas.flightPath = [];
                 airplane.flightPathIndex = 0;
 
                 airplane.setSelected();
@@ -645,23 +646,22 @@
                 if (airplane.isCrashed || airplane.isLanding) {
                     return;
                 }
-                var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
-                if (drawingCanvas != null) {
+                if (activeDrawingCanvas != null) {
                     var mouseX = stage.mouseX;
                     var mouseY = stage.mouseY;
-                    var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
+                    var midPoint = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
 
-                    drawingCanvas.graphics
+                    activeDrawingCanvas.graphics
                         .setStrokeStyle(configuration.airplaneColor.lineWidth, 'round', 'round')
                         .beginStroke(configuration.airplaneColor.lineColor)
-                        .moveTo(midPt.x, midPt.y)
+                        .moveTo(midPoint.x, midPoint.y)
                         .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
                     priorPoint.x = mouseX;
                     priorPoint.y = mouseY;
-                    priorMidPoint.x = midPt.x;
-                    priorMidPoint.y = midPt.y;
-                    drawingCanvas.flightPath.push({x: mouseX, y: mouseY});
+                    priorMidPoint.x = midPoint.x;
+                    priorMidPoint.y = midPoint.y;
+                    activeDrawingCanvas.flightPath.push({x: mouseX, y: mouseY});
                 }
             }
         }
@@ -669,6 +669,7 @@
         airplane.handleMouseUp = function(event) {
             if (!event.primary) { return; }
 
+            activeDrawingCanvas = null;
             var airplaneSprite = event.target;
             if (airplaneSprite != null) {
                 var airplane = airplaneSprite.airplane;
