@@ -31,11 +31,8 @@
     var configuration = {
         crashTimeToRemoval: 5,
         minFlightTime: 2,
-        flightPathAttributes: null,
-        airplaneAlert: null,
-        airplaneHighlight: null,
-        airplaneSelected: null,
-        airplaneWarning: null,
+        airplaneAlertColor: null,
+        airplaneColor: null,
         airplaneSprites: null,
         airplaneSeedTime: null,
         airportBackground: null,
@@ -59,28 +56,17 @@
     }
 
     function loadConfiguration() {
-        configuration.flightPathAttributes = {
-            lineColor: "#66ee55",
+        configuration.airplaneColor = {
+            fillColor: "#0052fc",
+            selectedColor: "#1f86df",
+            strokeColor: "#00133b",
+            strokeWidth: 4,
+            lineColor: "#55d1ee",
             lineWidth: 4
         };
-        configuration.airplaneHighlight = {
-            fillColor: "#0052fc",
-            strokeColor: "#00133b",
-            strokeWidth: 4
-        };
-        configuration.airplaneSelected = {
-            fillColor: "#00ee00",
-            strokeColor: "#009900",
-            strokeWidth: 4
-        };
-        configuration.airplaneAlert = {
+        configuration.airplaneAlertColor = {
             fillColor: "#ee0000",
             strokeColor: "#990000",
-            strokeWidth: 4
-        };
-        configuration.airplaneWarning = {
-            fillColor: "#fcba03",
-            strokeColor: "#fc1c03",
             strokeWidth: 4
         };
         configuration.airplaneSprites = [
@@ -300,9 +286,9 @@
 
             var graphics = new createjs.Graphics();
             var highlight = new createjs.Shape(graphics);
-            graphics.setStrokeStyle(configuration.airplaneAlert.strokeWidth);
-            airplane.graphicsStrokeCommand = graphics.beginStroke(configuration.airplaneAlert.strokeColor).command;
-            airplane.graphicsFillCommand = graphics.beginFill(configuration.airplaneAlert.fillColor).command;
+            graphics.setStrokeStyle(configuration.airplaneAlertColor.strokeWidth);
+            airplane.graphicsStrokeCommand = graphics.beginStroke(configuration.airplaneAlertColor.strokeColor).command;
+            airplane.graphicsFillCommand = graphics.beginFill(configuration.airplaneAlertColor.fillColor).command;
             graphics.drawCircle(0, 0, airplane.radius * 1.05);
             airplane.highlight = highlight;
 
@@ -327,33 +313,31 @@
 
         // highlight
         airplane.changeHighlightColor = function (newFillColor, newStrokeColor) {
-            var airplaneSprite = this.sprite;
             if (this.graphicsFillCommand != null && newFillColor) {
                 this.graphicsFillCommand.style = newFillColor;
             }
             if (this.graphicsStrokeCommand != null && newStrokeColor) {
                 this.graphicsStrokeCommand.style = newStrokeColor;
             }
-            var highlight = airplaneSprite.parent.getChildByName("highlight");
-            if (highlight != null) {
-                highlight.updateCache();
+            if (this.highlight != null) {
+                this.highlight.updateCache();
             }
         };
 
         airplane.setHighlight = function () {
-            this.changeHighlightColor(configuration.airplaneHighlight.fillColor, configuration.airplaneHighlight.strokeColor);
+            this.changeHighlightColor(configuration.airplaneColor.fillColor, configuration.airplaneColor.strokeColor);
         };
 
         airplane.setSelected = function () {
-            this.changeHighlightColor(configuration.airplaneSelected.fillColor, configuration.airplaneSelected.strokeColor);
+            this.changeHighlightColor(configuration.airplaneColor.selectedColor, configuration.airplaneColor.strokeColor);
         };
 
         airplane.setAlert = function () {
-            this.changeHighlightColor(configuration.airplaneAlert.fillColor, configuration.airplaneAlert.strokeColor);
+            this.changeHighlightColor(configuration.airplaneAlertColor.fillColor, configuration.airplaneAlertColor.strokeColor);
         };
 
         airplane.setWarning = function () {
-            this.changeHighlightColor(configuration.airplaneWarning.fillColor, configuration.airplaneWarning.strokeColor);
+            // this.changeHighlightColor(configuration.airplaneWarning.fillColor, configuration.airplaneWarning.strokeColor);
             // after warning clears set the prior highlight back, that that means we need to know what it was.
             // airplane.timeoutId = window.setTimeout(airplane.setHighlight.bind(airplane), 3000);
         };
@@ -649,7 +633,7 @@
 
         airplane.handleMouseMove = function(event) {
             if (!event.primary) { return; }
-            var airplairplaneSpriteane = event.target;
+            var airplaneSprite = event.target;
             if (airplaneSprite != null) {
                 var airplane = airplaneSprite.airplane;
                 if (airplane.isCrashed || airplane.isLanding) {
@@ -662,8 +646,8 @@
                     var midPt = new createjs.Point((priorPoint.x + mouseX) / 2, (priorPoint.y + mouseY) / 2);
 
                     drawingCanvas.graphics
-                        .setStrokeStyle(configuration.flightPathAttributes.lineWidth, 'round', 'round')
-                        .beginStroke(configuration.flightPathAttributes.lineColor)
+                        .setStrokeStyle(configuration.airplaneColor.lineWidth, 'round', 'round')
+                        .beginStroke(configuration.airplaneColor.lineColor)
                         .moveTo(midPt.x, midPt.y)
                         .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
@@ -1140,9 +1124,9 @@
         var alertContainer = new createjs.Container();
         var graphics = new createjs.Graphics();
         var background = new createjs.Shape(graphics);
-        graphics.setStrokeStyle(configuration.airplaneAlert.strokeWidth);
-        graphics.beginStroke(configuration.airplaneAlert.strokeColor);
-        graphics.beginFill(configuration.airplaneAlert.fillColor);
+        graphics.setStrokeStyle(configuration.airplaneAlertColor.strokeWidth);
+        graphics.beginStroke(configuration.airplaneAlertColor.strokeColor);
+        graphics.beginFill(configuration.airplaneAlertColor.fillColor);
         graphics.drawRoundRect(0, 0, width, height, 8);
         background.alpha = 0.5;
         alertContainer.addChild(background);
