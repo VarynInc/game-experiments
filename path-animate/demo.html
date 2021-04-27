@@ -28,6 +28,7 @@
     var arrayOfAlertContainers = [];
     var arrayOfLandingZones = [];
     var airplaneSpriteSheet;
+    var currentLineColorIndex = 0;
     var configuration = {
         crashTimeToRemoval: 5,
         minFlightTime: 2,
@@ -61,7 +62,7 @@
             selectedColor: "#1f86df",
             strokeColor: "#00133b",
             strokeWidth: 4,
-            lineColor: "#55d1ee",
+            lineColor: ["#55d1ee", "#ff5050", "#ff66ff", "#ffff66", "#ffffff", "#000099", "#ff6600", "#66ff66"],
             lineWidth: 4
         };
         configuration.airplaneAlertColor = {
@@ -229,11 +230,15 @@
             width: 0,
             height: 0,
             elevation: 50,
+            lineColorIndex: currentLineColorIndex,
             range: null,
             alertContainer: null,
             graphicsFillCommand: null,
             graphicsStrokeCommand: null
         };
+
+        // increment currentLineColorIndex for next airplane
+        currentLineColorIndex = (currentLineColorIndex + 1) % configuration.airplaneColor.lineColor.length
 
         // airplane visual representation is a sprite animation
         airplaneSprite = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
@@ -647,7 +652,7 @@
 
                     drawingCanvas.graphics
                         .setStrokeStyle(configuration.airplaneColor.lineWidth, 'round', 'round')
-                        .beginStroke(configuration.airplaneColor.lineColor)
+                        .beginStroke(configuration.airplaneColor.lineColor[airplane.lineColorIndex])
                         .moveTo(midPt.x, midPt.y)
                         .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
