@@ -46,6 +46,7 @@
         totalAirplanesCrashed: 0,
         nextAirplaneTime: -1,
         currentSeedIndex: 0,
+        currentLineColorIndex: 0,
         airplaneSpawns: null, // Pre-seed the current level for each airplane spawn
         arrayOfAirplanes: []
     }
@@ -62,7 +63,7 @@
             selectedColor: "#ffffff",
             strokeColor: "#00133b",
             strokeWidth: 4,
-            lineColor: "#55d1ee",
+            lineColor: ["#55d1ee", "#ff5050", "#ff66ff", "#ffff66", "#ffffff", "#000099", "#ff6600", "#66ff66"],
             lineWidth: 4
         };
         configuration.airplaneAlertColor = {
@@ -230,6 +231,7 @@
             width: 0,
             height: 0,
             elevation: 50,
+            lineColorIndex: gameData.currentLineColorIndex,
             range: null,
             alertContainer: null,
             graphicsFillCommand: null,
@@ -237,6 +239,9 @@
         };
 
         airplane.createSprite = function(parentContainer, airplaneFrame) {
+            // increment currentLineColorIndex for next airplane. TODO: Find next unused color.
+            gameData.currentLineColorIndex = (gameData.currentLineColorIndex + 1) % configuration.airplaneColor.lineColor.length;
+
             // airplane visual representation is a sprite animation
             airplaneSprite = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
             if (airplaneSprite != null) {
@@ -661,7 +666,7 @@
 
                     activeDrawingCanvas.graphics
                         .setStrokeStyle(configuration.airplaneColor.lineWidth, 'round', 'round')
-                        .beginStroke(configuration.airplaneColor.lineColor)
+                        .beginStroke(configuration.airplaneColor.lineColor[airplane.lineColorIndex])
                         .moveTo(midPoint.x, midPoint.y)
                         .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
