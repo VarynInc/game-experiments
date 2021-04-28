@@ -9,7 +9,7 @@
     <script src="./flightData.js"></script>
     <script id="editable">
     "use strict";
-    var debug = false;
+    var debug = true;
     var canvas;
     var stage;
     var stageWidth;
@@ -20,11 +20,11 @@
     var millisecondsPerFrame = 1000 / framerate;
     var PIOneEighty = Math.PI / 180;
     var oneEightyPI = 180 / Math.PI;
-    var maxAnglePerFrame = 360 / 2 / framerate;
+    var maxAnglePerFrame = 360 / framerate;
     var loader;
     var activeDrawingCanvas = null;
-    var priorPoint;
-    var priorMidPoint;
+    var priorPoint = null;
+    var priorMidPoint = null;
     var arrayOfLostAirplanes = [];
     var arrayOfAlertContainers = [];
     var arrayOfLandingZones = [];
@@ -59,7 +59,7 @@
     function loadConfiguration() {
         configuration.airplaneColor = {
             fillColor: "#0052fc",
-            selectedColor: "#1f86df",
+            selectedColor: "#ffffff",
             strokeColor: "#00133b",
             strokeWidth: 4,
             lineColor: "#55d1ee",
@@ -310,6 +310,7 @@
                 .to({ alpha: 0.5 }, 1000, createjs.Ease.getElasticIn(2, 5));
 
                 // add DisplayObjects in drawing order
+                airplaneSprite.mouseChildren = false;
                 airplaneContainer.addChild(airplaneShadow);
                 airplaneContainer.addChild(drawingCanvas);
                 airplaneContainer.addChild(highlight);
@@ -416,7 +417,7 @@
             }
             this.setPosition(startPoint);
             this.movePlane(finalPosition);
-            debugLog("A " + this.id + " start(" + this.x + "," + this.y + ") going to (" + finalPosition.x + "," + finalPosition.y + ") at angle " + this.rotation);
+            // debugLog("A " + this.id + " start(" + this.x + "," + this.y + ") going to (" + finalPosition.x + "," + finalPosition.y + ") at angle " + this.rotation);
             this.updatePosition(0, framesPerMillisecond);
         };
 
@@ -441,9 +442,7 @@
                     if (flightPath.length > 0) {
                         if (this.flightPathIndex >= flightPath.length) {
                             // ran out the path, clear it
-                            drawingCanvas.graphics.clear();
-                            drawingCanvas.flightPath = [];
-                            this.flightPathIndex = 0;
+                            this.clearFlightPath(drawingCanvas);
                         } else {
                             // we have a flight path to trace.
                             // examine each point until we find a point in front in current direction, +/- 15 degrees
@@ -468,14 +467,12 @@
                                 var deltaAngleZ = Math.abs(deltaAngle);
                                 // TODO: when crossing 0/359 we have to account for that
                                 // var deltaAngle = Math.abs(airplane.rotation - angleOfLine(airplane, nextPoint));
-                                debugLog("R=" + airplane.rotation + ", dA=" + deltaAngle);
                                 if (deltaAngle <= maxAnglePerFrame || (deltaAngle > (360 - maxAnglePerFrame))) {
                                     this.movePlane(nextPoint);
                                 } else {
                                     // if new angle is too great then flight path is no good, clear it
-                                    drawingCanvas.graphics.clear();
-                                    drawingCanvas.flightPath = [];
-                                    this.flightPathIndex = 0;
+                                    debugLog("Next point no good, R=" + airplane.rotation + ", dA=" + deltaAngle + ", max=" + maxAnglePerFrame);
+                                    this.clearFlightPath(drawingCanvas);
                                 }
                             }
                         }
@@ -518,10 +515,7 @@
                     this.arrivalTime = Date.now();
                     gameData.totalAirplanesLanded += 1;
                     zone.landedCount += 1;
-                    var drawingCanvas = getAirplaneFlightPathCanvas(this);
-                    drawingCanvas.graphics.clear();
-                    drawingCanvas.flightPath = [];
-                    this.flightPathIndex = 0;
+                    this.clearFlightPath(null);
                     this.highlight.visible = false;
                     updateScore();
                     var scaleTo = 0.75;
@@ -613,6 +607,21 @@
             this.highlight = null;
         }
 
+        airplane.clearFlightPath = function(drawingCanvas) {
+            if (drawingCanvas == null) {
+                drawingCanvas = getAirplaneFlightPathCanvas(this);
+            }
+            drawingCanvas.graphics.clear();
+            drawingCanvas.flightPath = [];
+            this.flightPathIndex = 0;
+            // if (drawingCanvas == activeDrawingCanvas) {
+            //     this.handleMouseUp({
+            //         primary: true,
+            //         target: this.sprite
+            //     });
+            // }
+        }
+
         airplane.activate = function(event) {
             if (!event.primary) { return; }
 
@@ -623,10 +632,9 @@
                 if (airplane.isCrashed || airplane.isLanding) {
                     return;
                 }
-                activeDrawingCanvas = getAirplaneFlightPathCanvas(airplane);
-                activeDrawingCanvas.graphics.clear();
-                activeDrawingCanvas.flightPath = [];
-                airplane.flightPathIndex = 0;
+                var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
+                airplane.clearFlightPath(drawingCanvas);
+                activeDrawingCanvas = drawingCanvas;
 
                 airplane.setSelected();
 
@@ -670,6 +678,8 @@
             if (!event.primary) { return; }
 
             activeDrawingCanvas = null;
+            priorPoint = null;
+            priorMidPoint = null;
             var airplaneSprite = event.target;
             if (airplaneSprite != null) {
                 var airplane = airplaneSprite.airplane;
@@ -963,7 +973,7 @@
             &&  airplane.rotation <= landingZone.landingRotationHigh)
             || ((landingZone.landingRotationLow > landingZone.landingRotationHigh)
             && (airplane.rotation >= landingZone.landingRotationLow || airplane.rotation <= landingZone.landingRotationHigh))) {
-            debugLog("Airplane " + airplane.id + " is within tolerance: A.r=" + airplane.rotation + ", L.r=" + landingZone.landingRotationLow + "/" + landingZone.landingRotationHigh);
+            // debugLog("Airplane " + airplane.id + " is within tolerance: A.r=" + airplane.rotation + ", L.r=" + landingZone.landingRotationLow + "/" + landingZone.landingRotationHigh);
             return true;
         }
         return false;
@@ -1043,13 +1053,6 @@
             planeA.isAlignedForLanding();
         }
         return false; // no crashes
-    }
-
-    function handleMouseUp(event) {
-        if (!event.primary) { return; }
-
-        // stop tracking mouse
-        stage.removeEventListener("stagemousemove", handleMouseMove);
     }
 
     function onEnterFrame(tickEvent) {
