@@ -1057,7 +1057,9 @@
                     if (planeB.active && ! planeB.isCrashed && ! planeB.isLanding) {
                         if (distanceBetweenPoints(planeA, planeB) < (planeA.radius + planeB.radius)) {
                             planeA.setCrashed();
+                            planeA.clearFlightPath(null);
                             planeB.setCrashed();
+                            planeB.clearFlightPath(null);
                             gameData.totalAirplanesCrashed += 2;
                             updateCrashes();
                             // returning here means no other planes will crash this frame
