@@ -466,17 +466,13 @@
                             }
                             if (nextPoint != null) {
                                 // compute what the angle will be to the next point and compare it with the current angle
-                                // TODO: Clean up this code for performance
                                 var angle = angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y);
-                                var deltaAngle = airplane.rotation - angle;
-                                var deltaAngleZ = Math.abs(deltaAngle);
-                                // TODO: when crossing 0/359 we have to account for that
-                                // var deltaAngle = Math.abs(airplane.rotation - angleOfLine(airplane, nextPoint));
-                                if (deltaAngle <= maxAnglePerFrame || (deltaAngle > (360 - maxAnglePerFrame))) {
+                                var deltaAngle = normalizeAngleDifference(airplane.rotation, angle);
+                                if (Math.abs(deltaAngle) <= maxAnglePerFrame) {
                                     this.movePlane(nextPoint);
                                 } else {
                                     // if new angle is too great then flight path is no good, clear it
-                                    debugLog("Next point no good, R=" + airplane.rotation + ", dA=" + deltaAngle + ", max=" + maxAnglePerFrame);
+                                    // debugLog("Next point no good, R=" + airplane.rotation + ", dA=" + deltaAngle + ", max=" + maxAnglePerFrame);
                                     this.clearFlightPath(drawingCanvas);
                                 }
                             }
@@ -551,6 +547,7 @@
                         } else if (deltaAngle < -180) {
                             deltaAngle += 360;
                         }
+                        // var deltaAngle = normalizeAngleDifference(zone.landingRotation, this.rotation);
                         deltaAngle = this.rotation + deltaAngle;
                         createjs.Tween.get(this)
                             .to({rotation: deltaAngle, speed: speedUp}, 1000, createjs.Ease.quadIn)
@@ -619,12 +616,6 @@
             drawingCanvas.graphics.clear();
             drawingCanvas.flightPath = [];
             this.flightPathIndex = 0;
-            // if (drawingCanvas == activeDrawingCanvas) {
-            //     this.handleMouseUp({
-            //         primary: true,
-            //         target: this.sprite
-            //     });
-            // }
         }
 
         airplane.activate = function(event) {
@@ -931,7 +922,11 @@
     }
 
     /**
-     * Make sure any angle is between 0 and 359 degrees.
+     * Make sure any angle is between 0 and 359 degrees. For example, this will change -5 degrees to 355 degrees
+     * and 365 degrees to 5 degrees.
+     *
+     * @param Number An angle to consider, in degrees.
+     * @return Number The adjusted angle if less than 0 or greater than 359. Note 360 is changed to 0.
      */
     function normalizeAngle(angle) {
         while (angle < 0) {
@@ -941,6 +936,25 @@
             angle -= 360;
         }
         return angle;
+    }
+
+    /**
+     * Compute the difference between two angles and adjust the difference to the shortest
+     * angle of rotation.
+     * 
+     * @param Number First angle.
+     * @param Number Sewcond angle
+     * @return Number Difference between the two angles.
+     */
+    function normalizeAngleDifference(angleA, angleB) {
+        var deltaAngle = (angleB - angleA) % 360;
+ 
+        if (deltaAngle > 180) {
+            deltaAngle -= 360;
+        } else if (deltaAngle < -180) {
+            deltaAngle += 360;
+        }
+        return deltaAngle;
     }
 
     /**
@@ -997,12 +1011,13 @@
         } else {
             angle -= 90;
         }
-        var deltaAngle = airplane.rotation - angle;
-        if (deltaAngle > 180) {
-            angle += 360;
-        } else if (deltaAngle < -180) {
-            angle -= 360;
-        }
+        var deltaAngle = normalizeAngleDifference(airplane.rotation, angle); // (airplane.rotation - angle) % 360;
+        // if (deltaAngle > 180) {
+        //     angle += 360;
+        // } else if (deltaAngle < -180) {
+        //     angle -= 360;
+        // }
+
         return normalizeAngle(angle);
     }
 
@@ -1016,12 +1031,12 @@
         } else {
             angle -= 90;
         }
-        var deltaAngle = 0 - angle;
-        if (deltaAngle > 180) {
-            angle += 360;
-        } else if (deltaAngle < -180) {
-            angle -= 360;
-        }
+        var deltaAngle = normalizeAngleDifference(0, angle); // 0 - angle;
+        // if (deltaAngle > 180) {
+        //     angle += 360;
+        // } else if (deltaAngle < -180) {
+        //     angle -= 360;
+        // }
         return normalizeAngle(angle);
     }
 
