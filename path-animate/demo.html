@@ -641,12 +641,22 @@
             var isOnTime = timeRemaining >= 0;
             var landingScore = this.score;
             var bonusScore = 0;
+            var bonusDivisor;
             gameData.totalAirplanesLanded += 1;
+
+            // award more bonus time value for the more valuable planes
+            if (landingScore < 900) {
+                bonusDivisor = 800
+            } else if (landingScore < 1200) {
+                bonusDivisor = 200;
+            } else {
+                bonusDivisor = 100;
+            }
             if (isOnTime) {
                 gameData.totalAirplanesLandedOnTime += 1;
-                bonusScore = Math.floor(timeRemaining / 200);
+                bonusScore = Math.floor(timeRemaining / bonusDivisor);
             }
-            debugLog("Landing " + this.id + " score " + landingScore + " on-time bonus " + bonusScore);
+            // debugLog("Landing " + this.id + " score " + landingScore + " on-time bonus " + bonusScore + " TR=" + timeRemaining);
             return landingScore + bonusScore;
         };
 
