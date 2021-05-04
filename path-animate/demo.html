@@ -47,7 +47,7 @@
         totalAirplanesCrashed: 0,
         nextAirplaneTime: -1,
         currentSeedIndex: 0,
-        availableColors: ["#55d1ee", "#ff5050", "#ff66ff", "#ffff66", "#ffffff", "#000099", "#ff6600", "#66ff66"],
+        availableColors: ["#55d1ee", "#ff99cc", "#ffff66", "#ff5050", "#66ff66", "#cc99ff", "#ff9933", "#3333ff"],
         airplaneSpawns: null, // Pre-seed the current level for each airplane spawn
         arrayOfAirplanes: []
     }
@@ -248,25 +248,21 @@
         }
 
         function lightenDarkenColor(color, amt) {
-            var red = parseInt(color.substr(1, 2), 16);
-            var green = parseInt(color.substr(3, 2), 16);
-            var blue = parseInt(color.substr(5, 2), 16);
+            var colors = [parseInt(color.substr(1, 2), 16), parseInt(color.substr(3, 2), 16), parseInt(color.substr(5, 2), 16)];
+            var newHexColors = [];
  
-            red = Math.floor(red * (1 - (amt / 100)));
-            green = Math.floor(green * (1 - (amt / 100)));
-            blue = Math.floor(blue * (1 - (amt / 100)));
-            
-            if (red > 255) {
-                red = 255;
-            } 
-            if (green > 255) {
-                green = 255;
-            }
-            if (blue > 255) {
-                blue = 255;
+            for (var i = 0; i < colors.length; i++) {
+                colors[i] = Math.floor(colors[i] * (1 - (amt / 100)));
+                if (colors[i] > 255) {
+                    colors[i] = 255;
+                }
+                newHexColors[i] = colors[i].toString(Number(16))
+                if(newHexColors[i].length == 1) {
+                    newHexColors[i] = "0" + newHexColors[i];
+                }
             }
 
-            return "#" + red.toString(Number(16)) + green.toString(Number(16)) + blue.toString(Number(16))
+            return "#" + newHexColors[0] + newHexColors[1] + newHexColors[2];
         }
 
         airplane.createSprite = function(parentContainer, airplaneFrame) {
@@ -368,16 +364,17 @@
 
 
         airplane.setHighlight = function () {
-            this.changeHighlightColor(airplane.highLightColor, airplane.highLightStrokeColor);
+            this.changeHighlightColor(airplane.highlightColor, airplane.highlightStrokeColor);
         };
 
         airplane.setSelected = function () {
-            this.changeHighlightColor(configuration.airplaneColor.selectedColor, airplane.highLightStrokeColor);
+            this.changeHighlightColor(configuration.airplaneColor.selectedColor, airplane.highlightStrokeColor);
         };
 
         airplane.setAlert = function () {
-            this.changeHighlightColor(airplane.highLightColor, airplane.highLightStrokeColor);
+            this.changeHighlightColor(airplane.highlightColor, airplane.highlightStrokeColor);
         };
+
 
         airplane.setWarning = function () {
             // this.changeHighlightColor(configuration.airplaneWarning.fillColor, configuration.airplaneWarning.strokeColor);
