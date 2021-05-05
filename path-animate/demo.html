@@ -29,6 +29,7 @@
     var arrayOfAlertContainers = [];
     var arrayOfLandingZones = [];
     var airplaneSpriteSheet;
+    var lightenDarkenNum = 30;
     var configuration = {
         crashTimeToRemoval: 5,
         minFlightTime: 2,
@@ -46,7 +47,7 @@
         totalAirplanesCrashed: 0,
         nextAirplaneTime: -1,
         currentSeedIndex: 0,
-        currentLineColorIndex: 0,
+        availableColors: ["#55d1ee", "#ff99cc", "#ffff66", "#ff5050", "#66ff66", "#cc99ff", "#ff9933", "#3333ff"],
         airplaneSpawns: null, // Pre-seed the current level for each airplane spawn
         arrayOfAirplanes: []
     }
@@ -63,7 +64,6 @@
             selectedColor: "#ffffff",
             strokeColor: "#00133b",
             strokeWidth: 4,
-            lineColor: ["#55d1ee", "#ff5050", "#ff66ff", "#ffff66", "#ffffff", "#000099", "#ff6600", "#66ff66"],
             lineWidth: 4
         };
         configuration.airplaneAlertColor = {
@@ -231,16 +231,41 @@
             width: 0,
             height: 0,
             elevation: 50,
-            lineColorIndex: gameData.currentLineColorIndex,
+            highlightColor: lightenDarkenColor(gameData.availableColors[0], -lightenDarkenNum),
+            highlightStrokeColor: lightenDarkenColor(gameData.availableColors[0], lightenDarkenNum),
+            lineColor: gameData.availableColors.shift(),
             range: null,
             alertContainer: null,
             graphicsFillCommand: null,
             graphicsStrokeCommand: null
         };
 
+        // ensures error won't be thrown if there are more planes on screen than initial length of available colors
+        if (typeof airplane.lineColor == undefined) {
+            airplane.lineColor = "#55d1ee";
+            airplane.highlightColor = lightenDarkenColor(airplane.lineColor, -lightenDarkenNum);
+            airplane.highlightStrokeColor = lightenDarkenColor(airplane.lineColor, lightenDarkenNum);
+        }
+
+        function lightenDarkenColor(color, amount) {
+            var colors = [parseInt(color.substr(1, 2), 16), parseInt(color.substr(3, 2), 16), parseInt(color.substr(5, 2), 16)];
+            var newHexColors = [];
+ 
+            for (var i = 0; i < colors.length; i++) {
+                colors[i] = Math.floor(colors[i] * (1 - (amount / 100)));
+                if (colors[i] > 255) {
+                    colors[i] = 255;
+                }
+                newHexColors[i] = colors[i].toString(Number(16))
+                if(newHexColors[i].length == 1) {
+                    newHexColors[i] = "0" + newHexColors[i];
+                }
+            }
+
+            return "#" + newHexColors[0] + newHexColors[1] + newHexColors[2];
+        }
+
         airplane.createSprite = function(parentContainer, airplaneFrame) {
-            // increment currentLineColorIndex for next airplane. TODO: Find next unused color.
-            gameData.currentLineColorIndex = (gameData.currentLineColorIndex + 1) % configuration.airplaneColor.lineColor.length;
 
             // airplane visual representation is a sprite animation
             airplaneSprite = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
@@ -295,8 +320,8 @@
                 var graphics = new createjs.Graphics();
                 var highlight = new createjs.Shape(graphics);
                 graphics.setStrokeStyle(configuration.airplaneAlertColor.strokeWidth);
-                this.graphicsStrokeCommand = graphics.beginStroke(configuration.airplaneColor.strokeColor).command;
-                this.graphicsFillCommand = graphics.beginFill(configuration.airplaneColor.fillColor).command;
+                this.graphicsStrokeCommand = graphics.beginStroke(airplane.highlightStrokeColor).command;
+                this.graphicsFillCommand = graphics.beginFill(airplane.highlightColor).command;
                 graphics.drawCircle(0, 0, this.radius * 1.05);
                 this.highlight = highlight;
 
@@ -337,17 +362,19 @@
             }
         };
 
+
         airplane.setHighlight = function () {
-            this.changeHighlightColor(configuration.airplaneColor.fillColor, configuration.airplaneColor.strokeColor);
+            this.changeHighlightColor(airplane.highlightColor, airplane.highlightStrokeColor);
         };
 
         airplane.setSelected = function () {
-            this.changeHighlightColor(configuration.airplaneColor.selectedColor, configuration.airplaneColor.strokeColor);
+            this.changeHighlightColor(configuration.airplaneColor.selectedColor, airplane.highlightStrokeColor);
         };
 
         airplane.setAlert = function () {
-            this.changeHighlightColor(configuration.airplaneAlertColor.fillColor, configuration.airplaneAlertColor.strokeColor);
+            this.changeHighlightColor(airplane.highlightColor, airplane.highlightStrokeColor);
         };
+
 
         airplane.setWarning = function () {
             // this.changeHighlightColor(configuration.airplaneWarning.fillColor, configuration.airplaneWarning.strokeColor);
@@ -583,6 +610,7 @@
         }
 
         airplane.removeFromGame = function() {
+            gameData.availableColors.push(airplane.lineColor);
             var airplaneIndex = airplaneIndexFromId(this.id);
             if (airplaneIndex >= 0) {
                 gameData.arrayOfAirplanes.splice(airplaneIndex, 1);
@@ -657,7 +685,7 @@
 
                     activeDrawingCanvas.graphics
                         .setStrokeStyle(configuration.airplaneColor.lineWidth, 'round', 'round')
-                        .beginStroke(configuration.airplaneColor.lineColor[airplane.lineColorIndex])
+                        .beginStroke(airplane.lineColor)
                         .moveTo(midPoint.x, midPoint.y)
                         .curveTo(priorPoint.x, priorPoint.y, priorMidPoint.x, priorMidPoint.y);
 
