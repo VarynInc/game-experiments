@@ -33,7 +33,6 @@
     var configuration = {
         crashTimeToRemoval: 5,
         minFlightTime: 2,
-        airplaneAlertColor: null,
         airplaneColor: null,
         airplaneTimerColor: null,
         airplaneTimerIntervals: null,
@@ -67,12 +66,12 @@
             selectedColor: "#ffffff",
             lineColors: ["#55d1ee", "#ff99cc", "#ffff66", "#660066", "#66ff66", "#cc99ff", "#ff9933", "#3333ff"],
             strokeWidth: 4,
-            lineWidth: 4
-        };
-        configuration.airplaneAlertColor = {
-            fillColor: "#ee0000",
-            strokeColor: "#990000",
-            strokeWidth: 4
+            lineWidth: 4,
+            alertColor: {
+                fillColor: "#ee0000",
+                strokeColor: "#990000",
+                strokeWidth: 4
+            }
         };
         configuration.airplaneTimerColor = {
             fillColor: ["#55d122", "#d9d824", "#d52424"],
@@ -372,7 +371,7 @@
                 // draw the highlight circle
                 var graphics = new createjs.Graphics();
                 var highlight = new createjs.Shape(graphics);
-                graphics.setStrokeStyle(configuration.airplaneAlertColor.strokeWidth);
+                graphics.setStrokeStyle(configuration.airplaneColor.strokeWidth);
                 this.graphicsStrokeCommand = graphics.beginStroke(airplane.highlightStrokeColor).command;
                 this.graphicsFillCommand = graphics.beginFill(airplane.highlightColor).command;
                 graphics.drawCircle(0, 0, this.radius * 1.05);
@@ -426,7 +425,7 @@
         };
 
         airplane.setAlert = function () {
-            this.changeHighlightColor(configuration.airplaneAlertColor.fillColor, configuration.airplaneAlertColor.strokeColor);
+            this.changeHighlightColor(configuration.airplaneColor.alertColor.fillColor, configuration.airplaneColor.alertColor.strokeColor);
         };
 
 
@@ -1340,9 +1339,9 @@
         var alertContainer = new createjs.Container();
         var graphics = new createjs.Graphics();
         var background = new createjs.Shape(graphics);
-        graphics.setStrokeStyle(configuration.airplaneAlertColor.strokeWidth);
-        graphics.beginStroke(configuration.airplaneAlertColor.strokeColor);
-        graphics.beginFill(configuration.airplaneAlertColor.fillColor);
+        graphics.setStrokeStyle(configuration.airplaneColor.alertColor.strokeWidth);
+        graphics.beginStroke(configuration.airplaneColor.alertColor.strokeColor);
+        graphics.beginFill(configuration.airplaneColor.alertColor.fillColor);
         graphics.drawRoundRect(0, 0, width, height, 8);
         background.alpha = 0.5;
         alertContainer.addChild(background);
