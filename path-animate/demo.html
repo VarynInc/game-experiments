@@ -247,12 +247,12 @@
             airplane.highlightStrokeColor = lightenDarkenColor(airplane.lineColor, lightenDarkenNum);
         }
 
-        function lightenDarkenColor(color, amt) {
+        function lightenDarkenColor(color, amount) {
             var colors = [parseInt(color.substr(1, 2), 16), parseInt(color.substr(3, 2), 16), parseInt(color.substr(5, 2), 16)];
             var newHexColors = [];
  
             for (var i = 0; i < colors.length; i++) {
-                colors[i] = Math.floor(colors[i] * (1 - (amt / 100)));
+                colors[i] = Math.floor(colors[i] * (1 - (amount / 100)));
                 if (colors[i] > 255) {
                     colors[i] = 255;
                 }
