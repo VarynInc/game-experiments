@@ -35,6 +35,8 @@
         minFlightTime: 2,
         airplaneAlertColor: null,
         airplaneColor: null,
+        airplaneTimerColor: null,
+        airplaneTimerIntervals: null,
         airplaneSprites: null,
         airplaneSeedTime: null,
         airportBackground: null,
@@ -44,11 +46,12 @@
         airplaneNextId: 0,
         totalAirplanesSeen: 0,
         totalAirplanesLanded: 0,
+        totalAirplanesLandedOnTime: 0,
         totalAirplanesCrashed: 0,
         nextAirplaneTime: -1,
         currentSeedIndex: 0,
         availableColors: ["#55d1ee", "#ff99cc", "#ffff66", "#ff5050", "#66ff66", "#cc99ff", "#ff9933", "#3333ff"],
-        airplaneSpawns: null, // Pre-seed the current level for each airplane spawn
+        airplaneSpawns: null,
         arrayOfAirplanes: []
     }
 
@@ -71,38 +74,53 @@
             strokeColor: "#990000",
             strokeWidth: 4
         };
+        configuration.airplaneTimerColor = {
+            fillColor: ["#55d122", "#d9d824", "#d52424"],
+            strokeColor: ["#193d0a", "#4c4b0c", "#460b0b"],
+            strokeWidth: 2
+        };
         configuration.airplaneSprites = [
             {
                 frame: "a-jumbo",
-                speed: 1.2
+                speed: 1.2,
+                score: 1500
             },
             {
                 frame: "a-jet",
-                speed: 1.1
+                speed: 1.1,
+                score: 1200
             },
             {
                 frame: "a-md",
-                speed: 1
+                speed: 1,
+                score: 900
             },
             {
                 frame: "a-prop",
-                speed: 0.75
+                speed: 0.75,
+                score: 800
             },
             {
                 frame: "a-cub",
-                speed: 0.5
+                speed: 0.5,
+                score: 500
             }
         ];
         configuration.chopperSprites = {
             frame: "chopper",
-            speed: 0.5
+            speed: 0.5,
+            score: 750
         };
         configuration.militarySprites = {
             frame: "a-mil",
-            speed: 1.5
+            speed: 1.5,
+            score: 2000
         };
         configuration.airportBackground = "airport-50.jpg";
-        // landing zones are based on background
+        // Landing zones are based on the background. Airplane landing zones are 4 points that
+        // define a polygon where the first and second point identify the slope that defined the
+        // angle to match the plane landing direction. For chopper landing zone a single point
+        // that defines a circle, center point and radius.
         configuration.landingZones = [
             [{x: 980, y: 252}, {x: 970, y: 420}, {x: 1038, y: 424}, {x: 1040, y: 260}],
             [{x: 922, y: 1348}, {x: 928, y: 1184}, {x: 994, y: 1186}, {x: 984, y: 1352}],
@@ -110,8 +128,9 @@
             [{x: 294, y: 1246}, {x: 404, y: 1154}, {x: 444, y: 1200}, {x: 342, y: 1288}],
             [{x: 798, y: 1112, r: 48}]
         ];
+        // Define game levels:
         configuration.airplaneSeedTime = [
-            { count:  3, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count:  3, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
             { count:  6, seedTime: 20000, max: 2, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
             { count: 12, seedTime: 17000, max: 3, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
             { count: 20, seedTime: 12000, max: 4, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
@@ -123,6 +142,9 @@
         ];
     };
 
+    /**
+     * Initialize the game and start loading assets based on the available resolution.
+     */
     function init() {
         canvas = document.getElementById("myCanvas");
         loadConfiguration();
@@ -140,7 +162,11 @@
         loadAssets();
     }
 
-    function loadAssets() {
+    /**
+     * Start loading assets based on the available resolution. When everything is loaded,
+     * `handleLoadComplete` is called.
+     */
+     function loadAssets() {
         loader = new createjs.LoadQueue(false);
         loader.addEventListener("complete", handleLoadComplete);
         loader.loadManifest([
@@ -207,19 +233,18 @@
         var nextPlaneType = getNextAirplane();
         var airplaneFrame = nextPlaneType.frame;
         var longestSide = 0;
+        var activeTime = currentTime + configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime;
         var airplane = {
             active: false,
-            activeTime: currentTime + configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime,
             speed: nextPlaneType.speed,
+            score: nextPlaneType.score,
             updateInterval: longestSide * 0.5,
             type: airplaneFrame,
             id: gameData.airplaneNextId,
             flightData: flightData.getNextFlightNumber(airplaneFrame),
-            scheduledArrival: new Date(Date.now() + (1000 * 60 * 150)), // TODO: figure out what makes sense for scheduled arrival times
             timeoutId: 0,
             crashTimeout: configuration.crashTimeToRemoval,
             flightTime: 0,
-            arrivalTime: 0,
             isCrashed: false,
             isLanding: false,
             sprite: null,
@@ -237,7 +262,14 @@
             range: null,
             alertContainer: null,
             graphicsFillCommand: null,
-            graphicsStrokeCommand: null
+            graphicsStrokeCommand: null,
+            activeTime: activeTime,
+            scheduledArrival: new Date(Date.now() + (1000 * 60 * (1 / nextPlaneType.speed))), // TODO: figure out what makes sense for scheduled arrival times
+            arrivalTime: 0,
+            arrivalTimerShape: null,
+            arrivalTimerShapeOffset: null,
+            arrivalTimerStrokeCommand: null,
+            arrivalTimerFillCommand: null
         };
 
         // ensures error won't be thrown if there are more planes on screen than initial length of available colors
@@ -316,6 +348,21 @@
                 drawingCanvas.flightPath = [];
                 this.flightPathIndex = 0;
 
+                // Shape to hold the arrival time count-down timer
+                var arrivalTimerGraphics = new createjs.Graphics();
+                var arrivalTimerShape = new createjs.Shape(arrivalTimerGraphics);
+                arrivalTimerShape.name = "arrival-timer";
+                arrivalTimerGraphics.setStrokeStyle(configuration.airplaneTimerColor.strokeWidth);
+                this.arrivalTimerStrokeCommand = arrivalTimerGraphics.beginStroke(configuration.airplaneTimerColor.strokeColor[0]).command;
+                this.arrivalTimerFillCommand = arrivalTimerGraphics.beginFill(configuration.airplaneTimerColor.fillColor[0]).command;
+                arrivalTimerGraphics.drawRect(0, 0, this.width, 12 * scaleFactor);
+                arrivalTimerShape.alpha = 0.6;
+                this.arrivalTimerShapeOffset = {
+                    x: 0 - (this.width * 0.5),
+                    y: 0 + (this.height * 0.5 * 1.05)
+                };
+                this.arrivalTimerShape = arrivalTimerShape;
+
                 // draw the highlight circle
                 var graphics = new createjs.Graphics();
                 var highlight = new createjs.Shape(graphics);
@@ -344,6 +391,7 @@
                 airplaneContainer.addChild(airplaneShadow);
                 airplaneContainer.addChild(drawingCanvas);
                 airplaneContainer.addChild(highlight);
+                airplaneContainer.addChild(arrivalTimerShape);
                 airplaneContainer.addChild(airplaneSprite);
                 parentContainer.addChild(airplaneContainer);
             }
@@ -404,6 +452,11 @@
             if (sprite != null) {
                 sprite.x = this.x;
                 sprite.y = this.y;
+            }
+            sprite = airplane.arrivalTimerShape;
+            if (sprite != null) {
+                sprite.x = this.x + this.arrivalTimerShapeOffset.x;
+                sprite.y = this.y + this.arrivalTimerShapeOffset.y;
             }
         };
 
@@ -493,7 +546,7 @@
                             }
                             if (nextPoint != null) {
                                 // compute what the angle will be to the next point and compare it with the current angle
-                                var angle = angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y);
+                                var angle = angleOfLine(airplane.x - nextPoint.x, airplane.y - nextPoint.y);
                                 var deltaAngle = normalizeAngleDifference(airplane.rotation, angle);
                                 if (Math.abs(deltaAngle) <= maxAnglePerFrame) {
                                     this.movePlane(nextPoint);
@@ -517,12 +570,35 @@
             return (this.flightTime < configuration.minFlightTime) || this.isVisible();
         };
 
+        airplane.updateArrivalTimer = function(time, deltaTime) {
+            var arrivalPercent;
+            var expectedArrival = this.scheduledArrival.getTime();
+            var timeRemaining = expectedArrival - Date.now();
+            var colorIndex = 0;
+            var arrivalTimerGraphics = this.arrivalTimerShape.graphics;
+
+            if (timeRemaining > 0 && arrivalTimerGraphics != null) {
+                arrivalPercent = timeRemaining / (expectedArrival - this.activeTime);
+                if (arrivalPercent < 0.3333) {
+                    colorIndex = 2;
+                } else if (arrivalPercent < 0.5) {
+                    colorIndex = 1;
+                }
+                this.arrivalTimerStrokeCommand.style = configuration.airplaneTimerColor.strokeColor[colorIndex];
+                this.arrivalTimerFillCommand.style = configuration.airplaneTimerColor.fillColor[colorIndex];
+                arrivalTimerGraphics.drawRect(0, 0, this.width * arrivalPercent, 12 * scaleFactor);
+                this.arrivalTimerShape.alpha = 0.6;
+            } else {
+                this.arrivalTimerShape.visible = false;
+            }
+        };
+
         airplane.isVisible = function() {
             return this.x > this.range.x
                 && this.x < this.range.width
                 && this.y > this.range.y
                 && this.y < this.range.height;
-        }
+        };
 
         airplane.isAlignedForLanding = function() {
             // test if airplane aligns with a landing zone
@@ -541,8 +617,9 @@
                 if (isAligned) {
                     this.isLanding = true;
                     this.arrivalTime = Date.now();
-                    gameData.totalAirplanesLanded += 1;
+                    this.landingScore();
                     zone.landedCount += 1;
+                    this.arrivalTimerShape.visible = false;
                     this.clearFlightPath(null);
                     this.highlight.visible = false;
                     updateScore();
@@ -595,7 +672,31 @@
                 }
             }
             return false;
-        }
+        };
+
+        airplane.landingScore = function() {
+            var timeRemaining = this.scheduledArrival.getTime() - Date.now();
+            var isOnTime = timeRemaining >= 0;
+            var landingScore = this.score;
+            var bonusScore = 0;
+            var bonusDivisor;
+            gameData.totalAirplanesLanded += 1;
+
+            // award more bonus time value for the more valuable planes
+            if (landingScore < 900) {
+                bonusDivisor = 800
+            } else if (landingScore < 1200) {
+                bonusDivisor = 200;
+            } else {
+                bonusDivisor = 100;
+            }
+            if (isOnTime) {
+                gameData.totalAirplanesLandedOnTime += 1;
+                bonusScore = Math.floor(timeRemaining / bonusDivisor);
+            }
+            // debugLog("Landing " + this.id + " score " + landingScore + " on-time bonus " + bonusScore + " TR=" + timeRemaining);
+            return landingScore + bonusScore;
+        };
 
         airplane.setCrashed = function() {
             this.isCrashed = true;
@@ -607,7 +708,7 @@
             }
             this.crashTimeout = configuration.crashTimeToRemoval;
             this.setAlert();
-        }
+        };
 
         airplane.removeFromGame = function() {
             gameData.availableColors.push(airplane.lineColor);
@@ -635,7 +736,8 @@
             this.sprite = null;
             this.shadow = null;
             this.highlight = null;
-        }
+            this.arrivalTimerShape = null;
+        };
 
         airplane.clearFlightPath = function(drawingCanvas) {
             if (drawingCanvas == null) {
@@ -644,7 +746,7 @@
             drawingCanvas.graphics.clear();
             drawingCanvas.flightPath = [];
             this.flightPathIndex = 0;
-        }
+        };
 
         airplane.activate = function(event) {
             if (!event.primary) { return; }
@@ -668,7 +770,7 @@
                 airplaneSprite.addEventListener("pressmove", airplane.handleMouseMove);
                 airplaneSprite.addEventListener("pressup", airplane.handleMouseUp);
             }
-        }
+        };
 
         airplane.handleMouseMove = function(event) {
             if (!event.primary) { return; }
@@ -696,7 +798,7 @@
                     activeDrawingCanvas.flightPath.push({x: mouseX, y: mouseY});
                 }
             }
-        }
+        };
 
         airplane.handleMouseUp = function(event) {
             if (!event.primary) { return; }
@@ -712,18 +814,22 @@
                 airplaneSprite.removeEventListener("pressup", airplane.handleMouseUp);
                 airplane.setHighlight();
             }
-        }
+        };
 
+        /**
+         * Update rotation of airplane to point to target point. This assumes the
+         * target point has already been checked to make sure it is within some degree
+         * of rotational tolerance.
+         */
         airplane.movePlane = function (toPosition) {
-            // Update rotation of airplane based on target point
-            this.rotation = angleOfAirplane(this, this.x - toPosition.x, this.y - toPosition.y);
+            this.rotation = angleOfLine(this.x - toPosition.x, this.y - toPosition.y);
             this.sprite.rotation = this.rotation;
             this.shadow.rotation = this.rotation;
-        }
+        };
 
         airplane.toString = function() {
             return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.isCrashed ? " CRASHED" : "");
-        }
+        };
 
         airplane.createSprite(stage, airplaneFrame);
 
@@ -756,9 +862,12 @@
             if (airplane.active) {
                 if ( ! airplane.updatePosition(time, deltaTime)) {
                     arrayOfLostAirplanes.push(airplane);
-                } 
+                } else if (! (airplane.isCrashed || airplane.isLanding)) {
+                    airplane.updateArrivalTimer(time, deltaTime);
+                }
             } else if (time >= airplane.activeTime) {
                 airplane.active = true;
+                airplane.activeTime = Date.now();
                 gameData.totalAirplanesSeen ++;
                 updateScore();
             }
@@ -907,7 +1016,7 @@
                 landingZoneShape.circle = circle;
                 landingZoneShape.polygon = null;
             }
-            landingZoneShape.alpha = 0.4;
+            landingZoneShape.alpha = 0.2;
             landingZoneShape.id = landingZoneId;
             landingZoneShape.landedCount = 0;
             stage.addChild(landingZoneShape);
@@ -915,6 +1024,9 @@
         });
     }
 
+    /**
+     * After all game assets are loaded control comes here to initialize the game.
+     */
     function handleLoadComplete() {
         gameData.airplaneNextId = 0;
         gameData.currentSeedIndex = 0;
@@ -1026,26 +1138,28 @@
         return false;
     }
 
-    function angleOfAirplane(airplane, xDistance, yDistance) {
+    /**
+     * Compute the angle of the line segment given an X and Y distance. This is used to
+     * adjust the airplane rotation to 4th quadrant, since everything must be mirrored
+     * to 0,0 being upper-left, w,h is lower right.
+     *
+     *        0
+     *        |
+     * 270 < -+- > 90
+     *        |
+     *       180
+     *
+     * @param Airplane airplane The airplane object.
+     * @param Number Distance on the X axis.
+     * @param Number Distance on the Y axis.
+     */
+    function angleOfLine(xDistance, yDistance) {
         var angle = angleOfObject(xDistance, yDistance);
-        // adjusts to 4th quadrant, since everything must be mirrored to 0,0 being upper-left, w,h is lower right.
-        //        0
-        //        |
-        // 270 < -+- > 90
-        //        |
-        //       180
         if (xDistance < 0) {
             angle += 90;
         } else {
             angle -= 90;
         }
-        var deltaAngle = normalizeAngleDifference(airplane.rotation, angle); // (airplane.rotation - angle) % 360;
-        // if (deltaAngle > 180) {
-        //     angle += 360;
-        // } else if (deltaAngle < -180) {
-        //     angle -= 360;
-        // }
-
         return normalizeAngle(angle);
     }
 
