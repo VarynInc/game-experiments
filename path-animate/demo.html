@@ -50,7 +50,7 @@
         nextAirplaneTime: -1,
         currentSeedIndex: 0,
         currentLineColorIndex: 0,
-        airplaneSpawns: null, // Pre-seed the current level for each airplane spawn
+        airplaneSpawns: null,
         arrayOfAirplanes: []
     }
 
@@ -66,7 +66,7 @@
             selectedColor: "#ffffff",
             strokeColor: "#00133b",
             strokeWidth: 4,
-            lineColor: ["#55d1ee", "#ff5050", "#ff66ff", "#ffff66", "#ffffff", "#000099", "#ff6600", "#66ff66"],
+            lineColor: ["#55d1ee", "#ff5050", "#ff66ff", "#ffff66", "#ffffff", "#0000cc", "#ff6600", "#66ff66"],
             lineWidth: 4
         };
         configuration.airplaneAlertColor = {
@@ -117,7 +117,10 @@
             score: 2000
         };
         configuration.airportBackground = "airport-50.jpg";
-        // landing zones are based on background
+        // Landing zones are based on the background. Airplane landing zones are 4 points that
+        // define a polygon where the first and second point identify the slope that defined the
+        // angle to match the plane landing direction. For chopper landing zone a single point
+        // that defines a circle, center point and radius.
         configuration.landingZones = [
             [{x: 980, y: 252}, {x: 970, y: 420}, {x: 1038, y: 424}, {x: 1040, y: 260}],
             [{x: 922, y: 1348}, {x: 928, y: 1184}, {x: 994, y: 1186}, {x: 984, y: 1352}],
@@ -125,8 +128,9 @@
             [{x: 294, y: 1246}, {x: 404, y: 1154}, {x: 444, y: 1200}, {x: 342, y: 1288}],
             [{x: 798, y: 1112, r: 48}]
         ];
+        // Define game levels:
         configuration.airplaneSeedTime = [
-            { count:  3, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count:  3, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
             { count:  6, seedTime: 20000, max: 2, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
             { count: 12, seedTime: 17000, max: 3, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
             { count: 20, seedTime: 12000, max: 4, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
@@ -138,6 +142,9 @@
         ];
     };
 
+    /**
+     * Initialize the game and start loading assets based on the available resolution.
+     */
     function init() {
         canvas = document.getElementById("myCanvas");
         loadConfiguration();
@@ -155,7 +162,11 @@
         loadAssets();
     }
 
-    function loadAssets() {
+    /**
+     * Start loading assets based on the available resolution. When everything is loaded,
+     * `handleLoadComplete` is called.
+     */
+     function loadAssets() {
         loader = new createjs.LoadQueue(false);
         loader.addEventListener("complete", handleLoadComplete);
         loader.loadManifest([
@@ -973,7 +984,7 @@
                 landingZoneShape.circle = circle;
                 landingZoneShape.polygon = null;
             }
-            landingZoneShape.alpha = 0.4;
+            landingZoneShape.alpha = 0.2;
             landingZoneShape.id = landingZoneId;
             landingZoneShape.landedCount = 0;
             stage.addChild(landingZoneShape);
@@ -981,6 +992,9 @@
         });
     }
 
+    /**
+     * After all game assets are loaded control comes here to initialize the game.
+     */
     function handleLoadComplete() {
         gameData.airplaneNextId = 0;
         gameData.currentSeedIndex = 0;
