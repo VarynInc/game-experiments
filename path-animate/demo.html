@@ -50,6 +50,7 @@
         totalAirplanesCrashed: 0,
         nextAirplaneTime: -1,
         currentSeedIndex: 0,
+        inBossLevel: 0,
         availableColors: ["#55d1ee", "#ff99cc", "#ffff66", "#ff5050", "#66ff66", "#cc99ff", "#ff9933", "#3333ff"],
         airplaneSpawns: null,
         arrayOfAirplanes: []
@@ -130,14 +131,14 @@
         ];
         // Define game levels:
         configuration.airplaneSeedTime = [
-            { count:  3, seedTime: 25000, max: 1, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
-            { count:  6, seedTime: 20000, max: 2, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
+            { count:  3, seedTime: 25000, max: 3, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
+            { count:  6, seedTime: 20000, max: 2, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
             { count: 12, seedTime: 17000, max: 3, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
             { count: 20, seedTime: 12000, max: 4, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
-            { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 2, boss: 2, alertTime: 3000 },
-            { count: 40, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 0, alertTime: 3000 },
+            { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 1, boss: 2, alertTime: 3000 },
+            { count: 40, seedTime:  7500, max: 8, militaryCount: 1, chopperCount: 2, boss: 0, alertTime: 3000 },
             { count: 50, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 3, alertTime: 3000 },
-            { count: 60, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0, alertTime: 2000 },
+            { count: 60, seedTime:  5000, max: 8, militaryCount: 2, chopperCount: 3, boss: 0, alertTime: 2000 },
             { count: 80, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0, alertTime: 1000 }
         ];
     };
@@ -188,7 +189,7 @@
                 return configuration.airplaneSprites[nextAirplaneType - 3];
             }
         } else {
-            configuration.airplaneSprites[Math.floor(Math.random() * configuration.airplaneSprites.length)];
+            return configuration.airplaneSprites[Math.floor(Math.random() * configuration.airplaneSprites.length)];
         }
     }
 
@@ -593,6 +594,11 @@
             }
         };
 
+        /**
+         * Determine if the airplane is completely visible on the screen. This uses
+         * `.range` which is pre-computed to include the airplanes width and height.
+         * @return boolean True if completely on screen, otherwise false.
+         */
         airplane.isVisible = function() {
             return this.x > this.range.x
                 && this.x < this.range.width
@@ -600,8 +606,12 @@
                 && this.y < this.range.height;
         };
 
+        /**
+         * Test if the airplane aligns with a landing zone. If it does, the landing sequence
+         * is started.
+         * @return boolean True if the landing sequence was started, otherwise false.
+         */
         airplane.isAlignedForLanding = function() {
-            // test if airplane aligns with a landing zone
             var i;
             var zone;
             var isAligned = false;
@@ -651,7 +661,6 @@
                         } else if (deltaAngle < -180) {
                             deltaAngle += 360;
                         }
-                        // var deltaAngle = normalizeAngleDifference(zone.landingRotation, this.rotation);
                         deltaAngle = this.rotation + deltaAngle;
                         createjs.Tween.get(this)
                             .to({rotation: deltaAngle, speed: speedUp}, 1000, createjs.Ease.quadIn)
@@ -700,6 +709,9 @@
 
         airplane.setCrashed = function() {
             this.isCrashed = true;
+            if (this.arrivalTimerShape != null) {
+                this.arrivalTimerShape.visible = false;
+            }
             if (this.alertContainer != null) {
                 window.clearTimeout(this.alertTimeout);
                 this.alertTimeout = 0;
@@ -748,6 +760,9 @@
             this.flightPathIndex = 0;
         };
 
+        /**
+         * This is the click handler when the user clicks/taps on an airplane.
+         */
         airplane.activate = function(event) {
             if (!event.primary) { return; }
 
@@ -893,12 +908,15 @@
         var i;
         var nextSpawn;
         var duplicateSpawnCounter;
+        var numberOfSpawns;
         var airplaneSpawns = [];
         for (i = 0; i < totalSpawns; i ++) {
             airplaneSpawns[i] = 0;
         }
+        // Seed choppers
         if (currentSeed.chopperCount > 0) {
-            for (i = 0; i < currentSeed.chopperCount; i++) {
+            numberOfSpawns = Math.min(currentSeed.chopperCount, totalSpawns);
+            for (i = 0; i < numberOfSpawns; i++) {
                 duplicateSpawnCounter = 10;
                 do {
                     nextSpawn = Math.floor(Math.random() * totalSpawns);
@@ -912,7 +930,9 @@
                 } while (duplicateSpawnCounter > 0);
             }
         }
+        // Seed military jets
         if (currentSeed.militaryCount > 0) {
+            numberOfSpawns = Math.min(currentSeed.militaryCount, totalSpawns - currentSeed.chopperCount);
             for (i = 0; i < currentSeed.militaryCount; i++) {
                 duplicateSpawnCounter = 10;
                 do {
@@ -927,6 +947,7 @@
                 } while (duplicateSpawnCounter > 0);
             }
         }
+        // Seed any unassigned spawns to a random airplane
         for (i = 0; i < totalSpawns; i ++) {
             if (airplaneSpawns[i] === 0) {
                 airplaneSpawns[i] = 3 + Math.floor(Math.random() * configuration.airplaneSprites.length);
@@ -940,6 +961,9 @@
         if (gameData.arrayOfAirplanes.length < configuration.airplaneSeedTime[currentSeedIndex].max
           && (gameData.nextAirplaneTime == 0 || (currentTime > gameData.nextAirplaneTime))) {
             if (gameData.airplaneSpawns.length < 1) {
+                if (configuration.airplaneSeedTime[currentSeedIndex].boss > 0) {
+                    gameData.inBossLevel = startBossLevel(configuration.airplaneSeedTime[currentSeedIndex].boss);
+                }
                 if (gameData.totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count
                   && (currentSeedIndex < (configuration.airplaneSeedTime.length - 1))) {
                     currentSeedIndex += 1;
@@ -947,9 +971,22 @@
                 }
                 generateSpawns();
             }
-            createAirplane(currentTime);
-            gameData.nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
+            if (gameData.inBossLevel == 0) {
+                createAirplane(currentTime);
+                gameData.nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
+            }
         }
+    }
+
+    /**
+     * Set up and start a boss level given the level number. Return the boss level that was started,
+     * in case the logic is not able to start a boos level and returns 0.
+     * @param integer Boss level identifier to indicate which boss level logic to start.
+     * @return integer The boss level number that was started, or 0 if no boss level was started.
+     */
+    function startBossLevel (levelNumber) {
+        var inBossLevel = 0;
+        return inBossLevel;
     }
 
     function createSprites() {
@@ -1163,6 +1200,15 @@
         return normalizeAngle(angle);
     }
 
+    /**
+     * Determine the angle required to align with a landing zone. This is done by
+     * looking at the first point, drawing a line to the second point, and matching
+     * that angle. This requires landing zones to have their first 2 points set up
+     * in this way otherwise this won;t work.
+     * @param Point startPoint First point to consider.
+     * @param Point endPoint Second point to consider.
+     * @return Number Angle determined by A->B.
+     */
     function angleOfLandingZone(startPoint, endPoint) {
         var xDistance = endPoint.x - startPoint.x;
         var yDistance = endPoint.y - startPoint.y;
@@ -1173,12 +1219,6 @@
         } else {
             angle -= 90;
         }
-        var deltaAngle = normalizeAngleDifference(0, angle); // 0 - angle;
-        // if (deltaAngle > 180) {
-        //     angle += 360;
-        // } else if (deltaAngle < -180) {
-        //     angle -= 360;
-        // }
         return normalizeAngle(angle);
     }
 
