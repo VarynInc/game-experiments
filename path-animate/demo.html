@@ -241,7 +241,7 @@
         };
 
         // ensures error won't be thrown if there are more planes on screen than initial length of available colors
-        if(typeof airplane.lineColor == undefined) {
+        if (typeof airplane.lineColor == undefined) {
             airplane.lineColor = "#55d1ee";
             airplane.highlightColor = lightenDarkenColor(airplane.lineColor, -lightenDarkenNum);
             airplane.highlightStrokeColor = lightenDarkenColor(airplane.lineColor, lightenDarkenNum);
