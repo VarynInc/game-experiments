@@ -519,7 +519,7 @@
                             }
                             if (nextPoint != null) {
                                 // compute what the angle will be to the next point and compare it with the current angle
-                                var angle = angleOfAirplane(airplane, airplane.x - nextPoint.x, airplane.y - nextPoint.y);
+                                var angle = angleOfLine(airplane.x - nextPoint.x, airplane.y - nextPoint.y);
                                 var deltaAngle = normalizeAngleDifference(airplane.rotation, angle);
                                 if (Math.abs(deltaAngle) <= maxAnglePerFrame) {
                                     this.movePlane(nextPoint);
@@ -788,9 +788,13 @@
             }
         };
 
+        /**
+         * Update rotation of airplane to point to target point. This assumes the
+         * target point has already been checked to make sure it is within some degree
+         * of rotational tolerance.
+         */
         airplane.movePlane = function (toPosition) {
-            // Update rotation of airplane based on target point
-            this.rotation = angleOfAirplane(this, this.x - toPosition.x, this.y - toPosition.y);
+            this.rotation = angleOfLine(this.x - toPosition.x, this.y - toPosition.y);
             this.sprite.rotation = this.rotation;
             this.shadow.rotation = this.rotation;
         };
@@ -1106,26 +1110,28 @@
         return false;
     }
 
-    function angleOfAirplane(airplane, xDistance, yDistance) {
+    /**
+     * Compute the angle of the line segment given an X and Y distance. This is used to
+     * adjust the airplane rotation to 4th quadrant, since everything must be mirrored
+     * to 0,0 being upper-left, w,h is lower right.
+     *
+     *        0
+     *        |
+     * 270 < -+- > 90
+     *        |
+     *       180
+     *
+     * @param Airplane airplane The airplane object.
+     * @param Number Distance on the X axis.
+     * @param Number Distance on the Y axis.
+     */
+    function angleOfLine(xDistance, yDistance) {
         var angle = angleOfObject(xDistance, yDistance);
-        // adjusts to 4th quadrant, since everything must be mirrored to 0,0 being upper-left, w,h is lower right.
-        //        0
-        //        |
-        // 270 < -+- > 90
-        //        |
-        //       180
         if (xDistance < 0) {
             angle += 90;
         } else {
             angle -= 90;
         }
-        var deltaAngle = normalizeAngleDifference(airplane.rotation, angle); // (airplane.rotation - angle) % 360;
-        // if (deltaAngle > 180) {
-        //     angle += 360;
-        // } else if (deltaAngle < -180) {
-        //     angle -= 360;
-        // }
-
         return normalizeAngle(angle);
     }
 
