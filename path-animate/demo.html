@@ -36,6 +36,7 @@
         airplaneColor: null,
         airplaneTimerColor: null,
         airplaneTimerIntervals: null,
+        bossLevelSpawnPositions: null,
         airplaneSprites: null,
         airplaneSeedTime: null,
         airportBackground: null,
@@ -49,7 +50,10 @@
         totalAirplanesCrashed: 0,
         nextAirplaneTime: -1,
         currentSeedIndex: 0,
-        inBossLevel: 0,
+        bossLevelIndex: 0,
+        bossLevelPositionIndex: 0,
+        level: 0,
+        inBossLevel: false,
         availableColors: [],
         airplaneSpawns: null,
         arrayOfAirplanes: []
@@ -127,17 +131,55 @@
             [{x: 294, y: 1246}, {x: 404, y: 1154}, {x: 444, y: 1200}, {x: 342, y: 1288}],
             [{x: 798, y: 1112, r: 48}]
         ];
+        // define the boss level airplane spawns
+        configuration.bossLevelSpawnPositions = [
+            [
+                {type: 7, startPoint: {x: -50, y: stageHeight * 0.2}, finalPosition: { x: stageWidth * 0.5, y: stageHeight * 0.5}},
+                {type: 7, startPoint: {x: -50, y: stageHeight * 0.5}, finalPosition: { x: stageWidth * 0.5, y: stageHeight * 0.5}},
+                {type: 7, startPoint: {x: -50, y: stageHeight * 0.8}, finalPosition: { x: stageWidth * 0.5, y: stageHeight * 0.5}},
+                {type: 7, startPoint: {x: stageWidth + 50, y: stageHeight * 0.2}, finalPosition: { x: stageWidth * 0.5, y: stageHeight * 0.5}},
+                {type: 7, startPoint: {x: stageWidth + 50, y: stageHeight * 0.5}, finalPosition: { x: stageWidth * 0.5, y: stageHeight * 0.5}},
+                {type: 7, startPoint: {x: stageWidth + 50, y: stageHeight * 0.8}, finalPosition: { x: stageWidth * 0.5, y: stageHeight * 0.5}}
+            ],
+            [
+                {type: 1, startPoint: {x: stageWidth + 30, y: stageHeight * 0.5}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 1, startPoint: {x: stageWidth + 40, y: stageHeight * 0.4}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 1, startPoint: {x: stageWidth + 40, y: stageHeight * 0.6}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 1, startPoint: {x: stageWidth + 50, y: stageHeight * 0.3}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 1, startPoint: {x: stageWidth + 50, y: stageHeight * 0.7}, finalPosition: { x: 0, y: stageHeight * 0.5}}
+            ],
+            [
+                {type: 2, startPoint: {x: stageWidth + 50, y: stageHeight * 0.5}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 80, y: stageHeight * 0.4}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 80, y: stageHeight * 0.6}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 100, y: stageHeight * 0.3}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 100, y: stageHeight * 0.7}, finalPosition: { x: 0, y: stageHeight * 0.5}}
+            ],
+            [
+                {type: 2, startPoint: {x: stageWidth + 50, y: stageHeight * 0.5}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 80, y: stageHeight * 0.4}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 80, y: stageHeight * 0.6}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 100, y: stageHeight * 0.3}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 100, y: stageHeight * 0.7}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 100, y: stageHeight * 0.2}, finalPosition: { x: 0, y: stageHeight * 0.5}},
+                {type: 2, startPoint: {x: stageWidth + 100, y: stageHeight * 0.8}, finalPosition: { x: 0, y: stageHeight * 0.5}}
+            ]
+        ];
         // Define game levels:
         configuration.airplaneSeedTime = [
-            { count:  3, seedTime: 25000, max: 3, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
-            { count:  6, seedTime: 20000, max: 2, militaryCount: 0, chopperCount: 0, boss: 0, alertTime: 5000 },
-            { count: 12, seedTime: 17000, max: 3, militaryCount: 0, chopperCount: 1, boss: 0, alertTime: 5000 },
-            { count: 20, seedTime: 12000, max: 4, militaryCount: 0, chopperCount: 1, boss: 1, alertTime: 3000 },
-            { count: 30, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 1, boss: 2, alertTime: 3000 },
-            { count: 40, seedTime:  7500, max: 8, militaryCount: 1, chopperCount: 2, boss: 0, alertTime: 3000 },
-            { count: 50, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, boss: 3, alertTime: 3000 },
-            { count: 60, seedTime:  5000, max: 8, militaryCount: 2, chopperCount: 3, boss: 0, alertTime: 2000 },
-            { count: 80, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, boss: 0, alertTime: 1000 }
+            { boss: false, count:  3, seedTime: 25000, max: 2, militaryCount: 0, chopperCount: 0, alertTime: 5000 },
+            { boss: false, count:  5, seedTime: 20000, max: 3, militaryCount: 0, chopperCount: 0, alertTime: 5000 },
+            { boss: false, count:  5, seedTime: 17000, max: 4, militaryCount: 0, chopperCount: 1, alertTime: 5000 },
+            { boss: false, count:  7, seedTime: 12000, max: 5, militaryCount: 0, chopperCount: 1, alertTime: 3000 },
+            { boss: true,  count:  0, seedTime:     0, max: 6, militaryCount: 0, chopperCount: 0, alertTime: 1000 },
+            { boss: false, count: 10, seedTime: 12000, max: 6, militaryCount: 1, chopperCount: 1, alertTime: 3000 },
+            { boss: true,  count:  0, seedTime:     0, max: 5, militaryCount: 0, chopperCount: 0, alertTime: 1000 },
+            { boss: false, count: 10, seedTime:  7500, max: 8, militaryCount: 1, chopperCount: 2, alertTime: 3000 },
+            { boss: true,  count:  0, seedTime:     0, max: 6, militaryCount: 0, chopperCount: 0, alertTime: 1000 },
+            { boss: false, count: 10, seedTime:  7500, max: 8, militaryCount: 2, chopperCount: 2, alertTime: 3000 },
+            { boss: true,  count:  0, seedTime:     0, max: 8, militaryCount: 0, chopperCount: 0, alertTime: 1000 },
+            { boss: false, count: 10, seedTime:  5000, max: 8, militaryCount: 2, chopperCount: 3, alertTime: 2000 },
+            { boss: false, count: 10, seedTime:  5000, max: 8, militaryCount: 3, chopperCount: 3, alertTime: 1000 }
         ];
     };
 
@@ -146,7 +188,6 @@
      */
     function init() {
         canvas = document.getElementById("myCanvas");
-        loadConfiguration();
 
         // check to see if we are running in a browser with touch support
         stage = new createjs.Stage(canvas);
@@ -154,6 +195,8 @@
         stage.enableDOMEvents(true);
         stageWidth = stage.canvas.width;
         stageHeight = stage.canvas.height;
+
+        loadConfiguration();
 
         createjs.Touch.enable(stage);
         createjs.Ticker.framerate = framerate;
@@ -177,17 +220,21 @@
     }
 
     function getNextAirplane() {
-        if (gameData.airplaneSpawns.length > 0) {
-            var nextAirplaneType = gameData.airplaneSpawns.shift();
-            if (nextAirplaneType === 1) {
-                return configuration.chopperSprites;
-            } else if (nextAirplaneType === 2) {
-                return configuration.militarySprites;
-            } else {
-                return configuration.airplaneSprites[nextAirplaneType - 3];
-            }
+        var nextAirplaneType;
+
+        if (gameData.inBossLevel && configuration.bossLevelSpawnPositions[gameData.bossLevelIndex].length > 0) {
+            nextAirplaneType = configuration.bossLevelSpawnPositions[gameData.bossLevelIndex][gameData.bossLevelPositionIndex].type;
+        } else if (gameData.airplaneSpawns.length > 0) {
+            nextAirplaneType = gameData.airplaneSpawns.shift();
         } else {
-            return configuration.airplaneSprites[Math.floor(Math.random() * configuration.airplaneSprites.length)];
+            nextAirplaneType = 1 + Math.floor(Math.random() * configuration.airplaneSprites.length);
+        }
+        if (nextAirplaneType === 1) {
+            return configuration.chopperSprites;
+        } else if (nextAirplaneType === 2) {
+            return configuration.militarySprites;
+        } else {
+            return configuration.airplaneSprites[nextAirplaneType - 3];
         }
     }
 
@@ -261,7 +308,6 @@
         var nextPlaneType = getNextAirplane();
         var airplaneFrame = nextPlaneType.frame;
         var longestSide = 0;
-        var activeTime = currentTime + configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime;
         var airplane = {
             active: false,
             speed: nextPlaneType.speed,
@@ -291,7 +337,7 @@
             alertContainer: null,
             graphicsFillCommand: null,
             graphicsStrokeCommand: null,
-            activeTime: activeTime,
+            activeTime: 0,
             scheduledArrival: new Date(Date.now() + (1000 * 60 * (1 / nextPlaneType.speed))), // TODO: figure out what makes sense for scheduled arrival times
             arrivalTime: 0,
             arrivalTimerShape: null,
@@ -300,10 +346,7 @@
             arrivalTimerFillCommand: null
         };
 
-        loadLineColor(airplane);
-
         airplane.createSprite = function(parentContainer, airplaneFrame) {
-
             // airplane visual representation is a sprite animation
             airplaneSprite = new createjs.Sprite(airplaneSpriteSheet, airplaneFrame);
             if (airplaneSprite != null) {
@@ -435,6 +478,10 @@
             // airplane.timeoutId = window.setTimeout(airplane.setHighlight.bind(airplane), 3000);
         };
 
+        /**
+         * Move the airplane and it children sprites to the indicated point on the screen.
+         * @param Point A point {x, y}
+         */
         airplane.setPosition = function(point) {
             var sprite = this.sprite;
             var airplaneContainer = sprite.parent;
@@ -465,6 +512,23 @@
             }
         };
 
+        /**
+         * Boss level starting positions are predetermined and require different initialization
+         * than regular level airplanes.
+         */
+        airplane.setBossLevelStartPosition = function (currentTime) {
+            var nextSpawn = configuration.bossLevelSpawnPositions[gameData.bossLevelIndex][gameData.bossLevelPositionIndex];
+            gameData.bossLevelPositionIndex += 1;
+            this.activeTime = currentTime + configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime;
+            this.setPosition(nextSpawn.startPoint);
+            this.movePlane(nextSpawn.finalPosition);
+            this.updatePosition(0, framesPerMillisecond);
+        };
+
+        /**
+         * Set the starting position for an airplane on a regular level by choosing a random
+         * location just slightly off the screen.
+         */
         airplane.setStartPosition = function () {
             var quadrant = Math.floor(Math.random() * 4); // determines which side airplane will enter from
             var startPoint = {
@@ -505,6 +569,7 @@
                     finalPosition.x = 0 - this.height;
                 }
             }
+            this.activeTime = currentTime + configuration.airplaneSeedTime[gameData.currentSeedIndex].alertTime;
             this.setPosition(startPoint);
             this.movePlane(finalPosition);
             // debugLog("A " + this.id + " start(" + this.x + "," + this.y + ") going to (" + finalPosition.x + "," + finalPosition.y + ") at angle " + this.rotation);
@@ -850,13 +915,18 @@
             return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.isCrashed ? " CRASHED" : "");
         };
 
+        loadLineColor(airplane);
         airplane.createSprite(stage, airplaneFrame);
 
         // position plane in its parent container
         airplane.sprite.addEventListener("mousedown", airplane.activate.bind(airplane));
         gameData.arrayOfAirplanes.push(airplane);
-        airplane.setStartPosition();
-        showFlightStatus(airplane);
+        if (gameData.inBossLevel) {
+            airplane.setBossLevelStartPosition(currentTime);
+        } else {
+            airplane.setStartPosition(currentTime);
+            showFlightStatus(airplane);
+        }
         return airplane;
     }
 
@@ -904,11 +974,7 @@
         // generates all airplane spawns for the current level
         var currentSeedIndex = gameData.currentSeedIndex;
         var currentSeed = configuration.airplaneSeedTime[currentSeedIndex];
-        var previousCount = 0; // previous count defaults to 0 for when seed = 0
-        if (currentSeedIndex > 0) {
-            previousCount = configuration.airplaneSeedTime[currentSeedIndex - 1].count;
-        }
-        var totalSpawns = currentSeed.count - previousCount; // total number of airplanes to spawn for this level
+        var totalSpawns = currentSeed.count; // total number of airplanes to spawn for this level
         var i;
         var nextSpawn;
         var duplicateSpawnCounter;
@@ -962,20 +1028,46 @@
 
     function seedNextAirplane(currentTime, deltaTime) {
         var currentSeedIndex = gameData.currentSeedIndex;
+        var waitingToStartBossLevel = false;
+        if (gameData.inBossLevel) {
+            if (gameData.arrayOfAirplanes.length < 1) {
+                // when all boss-level airplanes are resolved, advance to the next level.
+                bossLevelComplete();
+            } else {
+                // while there are active boss-level airplanes, just wait for them all to resolve.
+                return;
+            }
+        }
         if (gameData.arrayOfAirplanes.length < configuration.airplaneSeedTime[currentSeedIndex].max
           && (gameData.nextAirplaneTime == 0 || (currentTime > gameData.nextAirplaneTime))) {
+            // it is time to spawn another airplane.
             if (gameData.airplaneSpawns.length < 1) {
-                if (configuration.airplaneSeedTime[currentSeedIndex].boss > 0) {
-                    gameData.inBossLevel = startBossLevel(configuration.airplaneSeedTime[currentSeedIndex].boss);
+                // All airplanes for the current level have been spawned, advance to the next level.
+                var nextSeedIndex = currentSeedIndex + 1;
+                if (nextSeedIndex < configuration.airplaneSeedTime.length) {
+                    if (configuration.airplaneSeedTime[nextSeedIndex].boss) {
+                        // if the next level is a boss level, wait until all airplanes are complete before continuing.
+                        if (gameData.arrayOfAirplanes.length == 0) {
+                            currentSeedIndex += 1;
+                            gameData.currentSeedIndex = currentSeedIndex;
+                            startBossLevel(gameData.bossLevelIndex + 1, currentTime);
+                        } else {
+                            waitingToStartBossLevel = true;
+                        }
+                    } else {
+                        // move to next level and generate new spawns
+                        if (currentSeedIndex < (configuration.airplaneSeedTime.length - 1)) {
+                            currentSeedIndex += 1;
+                            gameData.currentSeedIndex = currentSeedIndex;
+                            gameData.level += 1;
+                        }
+                        generateSpawns();
+                    }
+                } else {
+                    generateSpawns();
                 }
-                if (gameData.totalAirplanesSeen >= configuration.airplaneSeedTime[currentSeedIndex].count
-                  && (currentSeedIndex < (configuration.airplaneSeedTime.length - 1))) {
-                    currentSeedIndex += 1;
-                    gameData.currentSeedIndex = currentSeedIndex;
-                }
-                generateSpawns();
             }
-            if (gameData.inBossLevel == 0) {
+            if ( ! gameData.inBossLevel && ! waitingToStartBossLevel) {
                 createAirplane(currentTime);
                 gameData.nextAirplaneTime = currentTime + 1000 + (Math.random() * configuration.airplaneSeedTime[currentSeedIndex].seedTime);
             }
@@ -988,10 +1080,27 @@
      * @param integer Boss level identifier to indicate which boss level logic to start.
      * @return integer The boss level number that was started, or 0 if no boss level was started.
      */
-    function startBossLevel (levelNumber) {
-        var inBossLevel = 0;
-        return inBossLevel;
-    }
+    function startBossLevel (levelNumber, currentTime) {
+        var levelIndex = levelNumber - 1;
+        gameData.inBossLevel = true;
+        gameData.bossLevelIndex = levelIndex;
+        gameData.bossLevelPositionIndex = 0;
+        var bossSpawns = configuration.bossLevelSpawnPositions[gameData.bossLevelIndex];
+        if (bossSpawns != null) {
+            for (var i = 0; i < bossSpawns.length; i ++) {
+                createAirplane(currentTime);
+            }
+        }
+        return levelNumber;
+    };
+
+    /**
+     * End the boss level.
+     */
+    function bossLevelComplete() {
+        gameData.inBossLevel = false;
+        gameData.bossLevelIndex += 1;
+    };
 
     function createSprites() {
         var spriteFrames = loader.getResult("game-spriteframes");
@@ -1071,6 +1180,8 @@
     function handleLoadComplete() {
         gameData.airplaneNextId = 0;
         gameData.currentSeedIndex = 0;
+        gameData.level = 1;
+        gameData.totalAirplanesSeen = 0;
         gameData.airplaneSpawns = [];
         gameData.nextAirplaneTime = 0;
         createSprites();
