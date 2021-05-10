@@ -309,7 +309,7 @@
         var airplaneFrame = nextPlaneType.frame;
         var longestSide = 0;
         var airplane = {
-            active: false,
+            active: 0,
             speed: nextPlaneType.speed,
             score: nextPlaneType.score,
             updateInterval: longestSide * 0.5,
@@ -574,6 +574,12 @@
             this.movePlane(finalPosition);
             // debugLog("A " + this.id + " start(" + this.x + "," + this.y + ") going to (" + finalPosition.x + "," + finalPosition.y + ") at angle " + this.rotation);
             this.updatePosition(0, framesPerMillisecond);
+            for (var i = 0; i < gameData.arrayOfAirplanes.length-1; i++) {
+                if (distanceBetweenPoints(startPoint, gameData.arrayOfAirplanes[i]) <= 100) {
+                    this.setStartPosition();
+                    break;
+                }
+            }
         };
 
         // time is running time since started. DeltaTime is milliseconds since last tick.
@@ -948,14 +954,17 @@
 
     function updateAirplanePosition(time, deltaTime) {
         gameData.arrayOfAirplanes.forEach(function(airplane) {
-            if (airplane.active) {
+            if (airplane.active >= 1) {
+                if (airplane.active == 1 && airplane.isVisible()) {
+                    airplane.active = 2;
+                }
                 if ( ! airplane.updatePosition(time, deltaTime)) {
                     arrayOfLostAirplanes.push(airplane);
                 } else if (! (airplane.isCrashed || airplane.isLanding)) {
                     airplane.updateArrivalTimer(time, deltaTime);
                 }
             } else if (time >= airplane.activeTime) {
-                airplane.active = true;
+                airplane.active = 1;
                 airplane.activeTime = Date.now();
                 gameData.totalAirplanesSeen ++;
                 updateScore();
@@ -1348,10 +1357,10 @@
         var j;
         for (i = 0; i < numberOfAirplanes - 1; i++) {
             planeA = gameData.arrayOfAirplanes[i];
-            if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding && ! planeA.isAlignedForLanding()) {
+            if (planeA.active == 2 && ! planeA.isCrashed && ! planeA.isLanding && ! planeA.isAlignedForLanding()) {
                 for (j = i + 1; j < numberOfAirplanes; j++) {
                     planeB = gameData.arrayOfAirplanes[j];
-                    if (planeB.active && ! planeB.isCrashed && ! planeB.isLanding) {
+                    if (planeB.active == 2 && ! planeB.isCrashed && ! planeB.isLanding) {
                         if (distanceBetweenPoints(planeA, planeB) < (planeA.radius + planeB.radius)) {
                             planeA.setCrashed();
                             planeA.clearFlightPath(null);
@@ -1368,7 +1377,7 @@
         }
         // if we get here the last plane was not checked for landing
         planeA = gameData.arrayOfAirplanes[numberOfAirplanes - 1];
-        if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding) {
+        if (planeA.active == 2 && ! planeA.isCrashed && ! planeA.isLanding) {
             planeA.isAlignedForLanding();
         }
         return false; // no crashes
