@@ -59,6 +59,14 @@
         arrayOfAirplanes: []
     }
 
+    var AirplaneActiveStates = {
+        SETPOSITION: 1,
+        PREARRIVAL: 2,
+        ONSCREEN: 3, 
+        LANDING: 4,
+        CRASHED: 5
+    }
+
     function debugLog(message) {
         if (debug) {
             console.log(message);
@@ -309,7 +317,6 @@
         var airplaneFrame = nextPlaneType.frame;
         var longestSide = 0;
         var airplane = {
-            active: false,
             speed: nextPlaneType.speed,
             score: nextPlaneType.score,
             updateInterval: longestSide * 0.5,
@@ -319,8 +326,6 @@
             timeoutId: 0,
             crashTimeout: configuration.crashTimeToRemoval,
             flightTime: 0,
-            isCrashed: false,
-            isLanding: false,
             sprite: null,
             shadow: null,
             highlight: null,
@@ -343,7 +348,8 @@
             arrivalTimerShape: null,
             arrivalTimerShapeOffset: null,
             arrivalTimerStrokeCommand: null,
-            arrivalTimerFillCommand: null
+            arrivalTimerFillCommand: null,
+            state: AirplaneActiveStates.SETPOSITION
         };
 
         airplane.createSprite = function(parentContainer, airplaneFrame) {
@@ -580,7 +586,7 @@
         // Return true if we should continue updating this position.
         airplane.updatePosition = function(time, deltaTime) {
             var airplaneContainer = this.sprite.parent;
-            if (this.isCrashed) {
+            if (this.state == AirplaneActiveStates.CRASHED) {
                 this.crashTimeout -= deltaTime;
                 if (airplaneContainer != null) {
                     airplaneContainer.alpha = this.crashTimeout / configuration.crashTimeToRemoval;
@@ -694,7 +700,7 @@
                     isAligned = pointInsidePolygon(this, zone.polygon) && slopeMatch(this, zone);
                 }
                 if (isAligned) {
-                    this.isLanding = true;
+                    this.state = AirplaneActiveStates.LANDING;
                     this.arrivalTime = Date.now();
                     this.landingScore();
                     zone.landedCount += 1;
@@ -777,7 +783,7 @@
         };
 
         airplane.setCrashed = function() {
-            this.isCrashed = true;
+            this.state = AirplaneActiveStates.CRASHED
             if (this.arrivalTimerShape != null) {
                 this.arrivalTimerShape.visible = false;
             }
@@ -839,7 +845,7 @@
             var airplaneSprite = event.target;
             if (airplaneSprite != null) {
                 var airplane = airplaneSprite.airplane;
-                if (airplane.isCrashed || airplane.isLanding) {
+                if (airplane.state == AirplaneActiveStates.CRASHED || airplane.state == AirplaneActiveStates.LANDING) {
                     return;
                 }
                 var drawingCanvas = getAirplaneFlightPathCanvas(airplane);
@@ -861,7 +867,7 @@
             var airplaneSprite = event.target;
             if (airplaneSprite != null) {
                 var airplane = airplaneSprite.airplane;
-                if (airplane.isCrashed || airplane.isLanding) {
+                if (airplane.state == AirplaneActiveStates.CRASHED || airplane.state == AirplaneActiveStates.LANDING) {
                     return;
                 }
                 if (activeDrawingCanvas != null) {
@@ -912,7 +918,7 @@
         };
 
         airplane.toString = function() {
-            return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.isCrashed ? " CRASHED" : "");
+            return "ID: " + this.id + " type: " + this.type + " flight time: " + this.flightTime + (this.state == AirplaneActiveStates.CRASHED ? " CRASHED" : "");
         };
 
         loadLineColor(airplane);
@@ -948,14 +954,17 @@
 
     function updateAirplanePosition(time, deltaTime) {
         gameData.arrayOfAirplanes.forEach(function(airplane) {
-            if (airplane.active) {
+            if (airplane.state != AirplaneActiveStates.SETPOSITION) {
+                if (airplane.state == AirplaneActiveStates.PREARRIVAL && airplane.isVisible) {
+                    airplane.state = AirplaneActiveStates.ONSCREEN;
+                }
                 if ( ! airplane.updatePosition(time, deltaTime)) {
                     arrayOfLostAirplanes.push(airplane);
-                } else if (! (airplane.isCrashed || airplane.isLanding)) {
+                } else if (! (airplane.state == AirplaneActiveStates.CRASHED || airplane.state == AirplaneActiveStates.LANDING)) {
                     airplane.updateArrivalTimer(time, deltaTime);
                 }
             } else if (time >= airplane.activeTime) {
-                airplane.active = true;
+                airplane.state = AirplaneActiveStates.PREARRIVAL
                 airplane.activeTime = Date.now();
                 gameData.totalAirplanesSeen ++;
                 updateScore();
@@ -1348,10 +1357,10 @@
         var j;
         for (i = 0; i < numberOfAirplanes - 1; i++) {
             planeA = gameData.arrayOfAirplanes[i];
-            if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding && ! planeA.isAlignedForLanding()) {
+            if (planeA.state == AirplaneActiveStates.ONSCREEN && ! planeA.isAlignedForLanding()) {
                 for (j = i + 1; j < numberOfAirplanes; j++) {
                     planeB = gameData.arrayOfAirplanes[j];
-                    if (planeB.active && ! planeB.isCrashed && ! planeB.isLanding) {
+                    if (planeB.state == AirplaneActiveStates.ONSCREEN) {
                         if (distanceBetweenPoints(planeA, planeB) < (planeA.radius + planeB.radius)) {
                             planeA.setCrashed();
                             planeA.clearFlightPath(null);
@@ -1368,7 +1377,7 @@
         }
         // if we get here the last plane was not checked for landing
         planeA = gameData.arrayOfAirplanes[numberOfAirplanes - 1];
-        if (planeA.active && ! planeA.isCrashed && ! planeA.isLanding) {
+        if (planeA.state != AirplaneActiveStates.CRASHED && planeA.state != AirplaneActiveStates.LANDING) {
             planeA.isAlignedForLanding();
         }
         return false; // no crashes
