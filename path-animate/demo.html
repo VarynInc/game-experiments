@@ -29,19 +29,22 @@
     var arrayOfAlertContainers = [];
     var arrayOfLandingZones = [];
     var airplaneSpriteSheet;
-    var lightenDarkenNum = 30;
+    // Define all game configuration parameters
     var configuration = {
         crashTimeToRemoval: 5,
         minFlightTime: 2,
         airplaneColor: null,
+        lightenDarkenVariance: 30,
         airplaneTimerColor: null,
-        airplaneTimerIntervals: null,
         bossLevelSpawnPositions: null,
         airplaneSprites: null,
+        militarySprites: null,
+        chopperSprites: null,
         airplaneSeedTime: null,
         airportBackground: null,
         landingZones: null
     };
+    // Define all active game state variables
     var gameData = {
         airplaneNextId: 0,
         totalAirplanesSeen: 0,
@@ -304,8 +307,8 @@
                gameData.availableColors[i] = configuration.airplaneColor.lineColors[i];
            }
        }
-       airplane.highlightColor = lightenDarkenColor(gameData.availableColors[0], -lightenDarkenNum);
-       airplane.highlightStrokeColor = lightenDarkenColor(gameData.availableColors[0], lightenDarkenNum);
+       airplane.highlightColor = lightenDarkenColor(gameData.availableColors[0], - configuration.lightenDarkenVariance);
+       airplane.highlightStrokeColor = lightenDarkenColor(gameData.availableColors[0], configuration.lightenDarkenVariance);
        airplane.lineColor = gameData.availableColors.shift();
     }
 
@@ -946,6 +949,7 @@
     }
 
     function getAirplaneFlightPathCanvas(airplane) {
+        // move to airplane method
         if (airplane != null && airplane.sprite != null && airplane.sprite.parent != null) {
             return airplane.sprite.parent.getChildByName("flight-path");
         }
@@ -1175,7 +1179,7 @@
                 landingZoneShape.circle = circle;
                 landingZoneShape.polygon = null;
             }
-            landingZoneShape.alpha = 0.2;
+            landingZoneShape.alpha = 0.1;
             landingZoneShape.id = landingZoneId;
             landingZoneShape.landedCount = 0;
             stage.addChild(landingZoneShape);
@@ -1216,10 +1220,6 @@
 
     function angleOfObject(xDistance, yDistance) {
         return Math.atan(yDistance / xDistance) * oneEightyPI;
-    }
-
-    function angleOfLine(firstPoint, secondPoint) {
-        return angleOfObject(secondPoint.x - firstPoint.x, secondPoint.y - firstPoint.y);
     }
 
     /**

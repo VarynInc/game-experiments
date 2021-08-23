@@ -74,7 +74,7 @@ const flightData = function() {
                 };
             } else if (airplaneClass == "a-cub") {
                 flightNumber = {
-                    carrier: "IND",
+                    carrier: "PVT",
                     departing: "local",
                 };
             } else {
