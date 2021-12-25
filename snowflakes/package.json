@@ -1,0 +1,27 @@
+{
+  "name": "game-experiments-snowflakes",
+  "version": "0.1.1",
+  "description": "Animate sprites to look and feel like snow.",
+  "scripts": {
+    "start": "node bin/rundev.js"
+  },
+  "devDependencies": {
+    "express": "^4.17.2",
+    "serve-static": "^1.14.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VarynInc/game-experiments.git"
+  },
+  "keywords": [
+    "javascript",
+    "game",
+    "varyn"
+  ],
+  "author": "John Foster",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/VarynInc/game-experiments/issues"
+  },
+  "homepage": "https://github.com/VarynInc/game-experiments#readme"
+}
