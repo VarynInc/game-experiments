@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Demo: Confetti</title>
+
+    <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script src="./index.js"></script>
+    <style>
+        html,
+        body {
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #6ecdf2 0%,#89cfef 0%,#36b2f0 0%,#54c0ee 47%,#3690f0 100%,#1e8bde 100%,#3690f0 100%);
+        }
+
+        #gameView {
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body onload="init();">
+    <canvas id="gameView"></canvas>
+</body>
+</html>
