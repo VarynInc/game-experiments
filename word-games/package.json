@@ -1,0 +1,36 @@
+{
+    "name": "word-game-experiments",
+    "version": "0.0.1",
+    "description": "Code and algorithm experiments for word games using JavaScript and Node.js",
+    "license": "MIT",
+    "keywords": [
+        "games",
+        "javascript",
+        "node",
+        "word"
+    ],
+    "author": {
+        "name": "John Foster",
+        "url": "https://github.com/varyndev",
+        "email": "john@varyn.com"
+    },
+    "main": "index.js",
+    "scripts": {
+        "test": "jest",
+        "dev": "vite",
+        "start": "vite",
+        "build": "vite build",
+        "serve": "vite preview"
+    },
+    "devDependencies": {
+        "vite": "^2.9.9"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/VarynInc/game-experiments.git"
+    },
+    "bugs": {
+        "url": "https://github.com/VarynInc/game-experiments/issues"
+    },
+    "homepage": "https://github.com/VarynInc/game-experiments#readme"
+}
