@@ -1,4 +1,4 @@
-# Showflake animation demo
+# Snowflake animation demo
 
 Animates some sprites to make it look and feel like snow.
 
