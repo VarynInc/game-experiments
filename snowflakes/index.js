@@ -44,7 +44,6 @@ function resizeStage() {
     if (backgroundShape != null) {
         createBackground();
     }
-
     stage.updateViewport(stageWidth, stageHeight);
     stage.update();
 }
@@ -70,7 +69,7 @@ function createSprites() {
     spriteFrames.framerate = framerate;
     snowflakeSpriteSheet = new createjs.SpriteSheet(spriteFrames);
 
-    const numberOfSnowflakes = Math.floor(Math.random() * stageWidth * 0.25) + 200;
+    const numberOfSnowflakes = Math.floor(Math.random() * stageWidth * 0.25) + 500;
     for (let i = 0; i < numberOfSnowflakes; i += 1) {
         createSnowflake(numberOfSpriteFrames);
     }
@@ -112,14 +111,32 @@ function createSnowflake(numberOfSpriteFrames) {
 
 function createBackground() {
     if (backgroundShape != null) {
-        stage.removeChild(backgroundShape);
+        stage.removeAllChildren();
     }
     const graphics = new createjs.Graphics()
-        .beginLinearGradientFill(["#000044", "#0000ff"], [0, 1], 0, 0, 0, stageHeight)
+        .beginLinearGradientFill(["#000034", "#00007f"], [0, 1], 0, 0, 0, stageHeight)
         .drawRect(0, 0, stageWidth, stageHeight);
     backgroundShape = new createjs.Shape(graphics);
     backgroundShape.cache(0, 0, stageWidth, stageHeight);
     stage.addChildAt(backgroundShape, 0);
+    let image = new createjs.Bitmap("mountains.png");
+    // scale so it fits full width
+    let imageSize = image.getBounds();
+    let scale = stageWidth / imageSize.width;
+    image.scaleX = scale;
+    image.scaleY = scale;
+    image.x = 0;
+    image.y = stageHeight - (imageSize.height * scale);
+    stage.addChild(image);
+    image = new createjs.Bitmap("tree.png");
+    // scale to fit 50% center
+    imageSize = image.getBounds();
+    scale = (stageHeight * 0.75) / imageSize.height;
+    image.scaleX = scale;
+    image.scaleY = scale;
+    image.x = (stageWidth - imageSize.width * scale) * 0.5;
+    image.y = stageHeight - (imageSize.height * scale);
+    stage.addChild(image);
 }
 
 /**
@@ -133,14 +150,10 @@ function handleLoadComplete() {
 }
 
 function onEnterFrame(tickEvent) {
-    var deltaTime = tickEvent.delta / 1000;
-
-    // seed more snowflakes
     nextSnowflake -= tickEvent.delta;
     if (nextSnowflake <= 0) {
         createSnowflake(numberOfSpriteFrames);
-        nextSnowflake = Math.floor(Math.random() * 100);
+        nextSnowflake = Math.floor(Math.random() * 50);
     }
-
     stage.update(tickEvent);
 }

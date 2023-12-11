@@ -9,6 +9,8 @@
 ehthumbs.db
 Thumbs.db
 cookie.txt
+*.xcf
+*.psd
 
 # Logs
 logs
