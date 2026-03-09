@@ -1,8 +1,11 @@
 class WordSearch {
 
-    constructor () {
+    constructor (pathToDictionary) {
         this.dictionary = null;
         this.loading = false;
+        if (pathToDictionary) {
+            this.loadDictionary(pathToDictionary);
+        }
     }
 
     loadDictionary (pathToDictionary) {
@@ -31,7 +34,6 @@ class WordSearch {
      * Find words that match a word template. The template is a type of regex style pattern used to
      * identify the type of word pattern you are searching for. Examples:
      * - `a????`: match 5-letter words that begin with `a`.
-     * - `?le*`: match words of any length that begin with any letter and have `l` as the second and `e` as the third letter.
      * - `cle[atb][rhs]??`: match 7-letter words beginning with `cle`, and have only the matched letters in positions 4 and 5, followed by any 2 letters.
      *
      * @param {string} wordTemplate A regex style template used to describe the word pattern you are looking for.
@@ -41,10 +43,11 @@ class WordSearch {
         if (this.dictionary == null || this.loading) {
             return null;
         }
+        const regexTemplate = wordTemplate.toLocaleLowerCase().replace(/\?/g, "[a-z]");
         let results = [];
-        results.push("words");
-        results.push("clear");
-        results.push("album");
+        const re = new RegExp(`^${regexTemplate}$`, "gm");
+        const matches = this.dictionary.match(re);
+        results = results.concat(matches);
         return results;
     }
 
@@ -55,10 +58,8 @@ class WordSearch {
      * @returns {integer} A count of the number of matching words in the dictionary.
      */
     count (wordTemplate) {
-        if (this.dictionary == null || this.loading) {
-            return -1;
-        }
-        return 22;
+        const wordList = this.find(wordTemplate);
+        return wordList.length;
     }
 
     /**

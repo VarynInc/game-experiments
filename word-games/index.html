@@ -3,11 +3,40 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Code experiments with JavaScript</title>
+    <title>Word search</title>
+    <link href="lib/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="index.css" />
 </head>
 <body>
-    <div id="appDiv"></div>
+    <div class="container-fluid p-4">
+        <h1>Word Search</h1>
+        <div class="row">
+            <div class="col-2">
+                <form>
+                    <div class="form-group">
+                        <label for="template">Enter word template:</label>
+                        <input type="text" class="form-control" id="template" name="template" aria-describedby="templateHelp" placeholder="Enter template">
+                        <small id="templateHelp" class="form-text text-muted">Use ? for any letter, [abc] for specific letters in a certain position.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="include">Include letters</label>
+                        <input type="text" class="form-control" id="include" name="include" aria-describedby="includeHelp" placeholder="Include these letters">
+                        <small id="includeHelp" class="form-text text-muted">A list of letters that must appear in any word found by the template.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="exclude">Exclude letters</label>
+                        <input type="text" class="form-control" id="exclude" name="exclude" aria-describedby="excludeHelp" placeholder="Exclude these letters">
+                        <small id="excludeHelp" class="form-text text-muted">A list of letters that must not appear in any word found by the template.</small>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="search">Search</button>
+                </form>
+            </div>
+            <div class="col-10">
+                <div id="appDiv"></div>
+            </div>
+        </div>
+    </div>
+    <script src="lib/bootstrap.bundle.min.js"></script>
     <script type="module" src="./index.js"></script>
 </body>
 </html>

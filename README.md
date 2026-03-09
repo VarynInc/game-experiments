@@ -9,3 +9,5 @@ Experiments and demos for game play mechanics and ideas:
 * [a-life demo](./a-life-game/README.md) experiment with artificial life.
 * [Word games](./word-games/README.md) various utilities and algorithms used in word games.
 * [Component index](./component-index/README.md)
+* [Solitaire](./solitaire/README.md)
+* [Minesweeper](./minesweeper/README.md)
