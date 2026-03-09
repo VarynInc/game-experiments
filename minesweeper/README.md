@@ -7,3 +7,4 @@ Precursor to _There are spies among us_ game concept.
 
 To run, load index.html in a browser.
 
+[Play](./index.html)

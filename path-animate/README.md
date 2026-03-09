@@ -6,3 +6,4 @@ Move a sprite along a path drawn by the user.
 2. Release mouse/touch.
 3. Animate sprite to follow chosen path.
 
+[Play](./demo.html)

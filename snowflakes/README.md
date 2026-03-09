@@ -10,3 +10,5 @@ npm start
 Then open a browser at the URL shown in the console.
 
 ![snowflakes](./snowflake.gif)
+
+[Play](./index.html)
