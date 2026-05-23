@@ -3,6 +3,7 @@
 Experiments and demos for game play mechanics and ideas:
 
 * [a-life demo](./a-life-game/README.md): experiment with artificial life.
+* [Bomb demo](./bomb/README.md): experiment with bomb animation.
 * [Component index](./component-index/README.md): Algorithm concept to support jigsaw puzzle piece management.
 * [Confetti](./confetti/README.md): confetti animation.
 * [Lotto balls](./lotto-balls/README.md): animate lotto balls in a container.
@@ -12,4 +13,5 @@ Experiments and demos for game play mechanics and ideas:
 * [Slicey](./slicey/README.md): Fruit ninja idea done mostly in CSS.
 * [Snowflakes](./snowflakes/README.md): snowflake animation.
 * [Solitaire](./solitaire/README.md): Klondike style built with Lovable AI.
+* [Space Invaders](./space-invaders/README.md): Space Invaders game made with CreateJS.
 * [Word games](./word-games/README.md): various utilities and algorithms used in word games.
