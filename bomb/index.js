@@ -50,11 +50,7 @@ function onEnterFrame(event) {
     stage.update(event);
 }
 
-function createBomb() {
-    if (bombSprite !== null) {
-        return;
-    }
-    const startFrame = bombAnimations[0];
+function createBackground(container) {
     const shape = new createjs.Shape();
     const graphics = shape.graphics;
     shape.x = 0;
@@ -64,6 +60,13 @@ function createBomb() {
     graphics.setStrokeStyle(2);
     graphics.drawRect(0, 0, container.width, container.height);
     container.addChild(shape);
+}
+
+function createBomb(container) {
+    if (bombSprite !== null) {
+        return;
+    }
+    const startFrame = bombAnimations[0];
 
     bombSprite = new createjs.Sprite(spriteSheet.spriteData, startFrame);
     bombSprite.framerate = 30;
@@ -132,13 +135,13 @@ function handleLoadComplete() {
     container = new createjs.Container();
     stage.addChild(container);
     resizeCanvas();
-    createBomb();
+    createBackground(container);
+    createBomb(container);
 }
 
 function loadAssets() {
     const assetManifest = [];
     loadQueue = new createjs.LoadQueue(true, "", "anonymous");
-    loadQueue.installPlugin(createjs.Sound);
     loadQueue.on("complete", handleLoadComplete, this);
     loadQueue.installPlugin(createjs.Sound);
     if ( ! createjs.Sound.initializeDefaultPlugins()) {
