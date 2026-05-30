@@ -66,7 +66,7 @@ function createBomb() {
     container.addChild(shape);
 
     bombSprite = new createjs.Sprite(spriteSheet.spriteData, startFrame);
-    bombSprite.framerate = 20;
+    bombSprite.framerate = 30;
     bombSprite.name = startFrame;
     bombSprite.visible = true;
     bombSprite.startTime = 0;
