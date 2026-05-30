@@ -22,13 +22,13 @@ function resizeCanvas() {
 const bombAnimations = [
     "bomb",
     "bomb-fuse",
-    "bomb-fuseburn",
+    "bomb-fuse-burn",
     "bomb-ex"
 ];
 const assetFolder = "./assets/";
 const gameAssetsManifest = [
-    { id: "bomb-sprites", src: assetFolder + "bomb-sprites.png" },
-    { id: "bomb-sprites-frames", src: assetFolder + "bomb-sprites.json" }
+    { id: "bomb-sprites", src: assetFolder + "bomb-sprites-100.png" },
+    { id: "bomb-sprites-frames", src: assetFolder + "bomb-sprites-100.json" }
 ];
 const gameSounds = [
     { id: "explode", src: assetFolder + "explode.mp3" },
@@ -66,7 +66,7 @@ function createBomb() {
     container.addChild(shape);
 
     bombSprite = new createjs.Sprite(spriteSheet.spriteData, startFrame);
-    bombSprite.framerate = 30;
+    bombSprite.framerate = 20;
     bombSprite.name = startFrame;
     bombSprite.visible = true;
     bombSprite.startTime = 0;
@@ -74,7 +74,7 @@ function createBomb() {
     bombSprite.loopCounter = 0;
     bombSprite.bombSound = null;
 
-    bombSprite.setTransform((container.width * 0.5) - 50, (container.height * 0.5) - 50, 1, 1, 0, 0, 0, 0, 0);
+    bombSprite.setTransform((container.width * 0.5) - 50, (container.height * 0.5) - 50, 2, 2, 0, 0, 0, 0, 0);
     container.addChild(bombSprite);
     bombSprite.addEventListener("click", function() {
         if (bombSprite.startTime == 0) {
