@@ -14,4 +14,5 @@ Experiments and demos for game play mechanics and ideas:
 * [Snowflakes](./snowflakes/README.md): snowflake animation.
 * [Solitaire](./solitaire/README.md): Klondike style built with Lovable AI.
 * [Space Invaders](./space-invaders/README.md): Space Invaders game made with CreateJS.
+* [Sprite animation](./sprite-animation/README.md): Example animation techniques using spritesheet and TweenJS.
 * [Word games](./word-games/README.md): various utilities and algorithms used in word games.
