@@ -16,3 +16,5 @@ Experiments and demos for game play mechanics and ideas:
 * [Space Invaders](./space-invaders/README.md): Space Invaders game made with CreateJS.
 * [Sprite animation](./sprite-animation/README.md): Example animation techniques using spritesheet and TweenJS.
 * [Word games](./word-games/README.md): various utilities and algorithms used in word games.
+
+Many of these demos will not run directly from loading the HTML in your browser due to CORS issues with loading the required assets, so you may have to run them from a web server in order to load and run the demo.
