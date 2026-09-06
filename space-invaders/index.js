@@ -1,11 +1,19 @@
 /**
  * Space invaders
  */
+const assetFolder = "./assets/";
+const gameAssetsManifest = [
+    { id: "invader-sprites", src: assetFolder + "invader-sprites.png" },
+    { id: "invader-sprites-frames", src: assetFolder + "invader-sprites.json" }
+];
+const gameSounds = [
+];
 
 /**
  * Define all possible game states.
  */
 const GAME_STATES = {
+    INIT: "init",
     LOAD: "load",
     MENU: "menu",
     PLAY: "play",
@@ -20,14 +28,17 @@ const gameState = {
     canvas: document.getElementById("gameView"),
     stage: null,
     container: null,
-    currentState: GAME_STATES.LOAD,
-    nextState: GAME_STATES.MENU,
+    currentState: GAME_STATES.INIT,
+    priorState: GAME_STATES.INIT,
     runState: null,
     level: 0,
     score: 0,
     startTime: null,
     endTime: null,
 };
+let stage;
+let loadQueue;
+let spriteSheet = null;
 
 function newGame() {
     gameState.score = 0;
@@ -37,11 +48,41 @@ function newGame() {
 }
 
 /**
+ * Advance the game state to the indicated game state and update the
+ * state machine to invoke the respective state function.
+ * @param {string} nextState Next state to advance to.
+ */
+function gameStateNext(nextState) {
+    gameState.priorState = gameState.currentState;
+    gameState.currentState = nextState;
+    switch (nextState) {
+        case GAME_STATES.INIT:
+            gameState.runState = init;
+            break;
+        case GAME_STATES.LOAD:
+            gameState.runState = gameStateLoad;
+            break;
+        case GAME_STATES.MENU:
+            gameState.runState = gameStateMenu;
+            break;
+        case GAME_STATES.PLAY:
+            gameState.runState = gameStatePlay;
+            break;
+        case GAME_STATES.LEVEL_UP:
+            gameState.runState = gameStateLevelUp;
+            break;
+        case GAME_STATES.GAME_OVER:
+            gameState.runState = gameStateGameOver;
+            break;
+    }
+}
+
+/**
  * Show splash screen and load all necessary assets for the game, such as images, sounds, etc. Once loading is
  * complete, transition to the next game state (e.g., menu).
  */
 function gameStateLoad() {
-
+    // @todo: monitor loading progress, update load bar
 }
 
 /**
@@ -116,4 +157,53 @@ function init() {
     createjs.Ticker.framerate = 60;
     createjs.Ticker.addEventListener("tick", onEnterFrame);
     window.addEventListener("resize", resizeCanvas);
+    gameStateNext(GAME_STATES.LOAD);
+    loadAssets();
+}
+
+/**
+ * Start the game load procedures.
+ */
+function loadAssets() {
+    const assetManifest = [];
+    loadQueue = new createjs.LoadQueue(true, "", "anonymous");
+    loadQueue.on("complete", handleLoadComplete, this);
+    loadQueue.installPlugin(createjs.Sound);
+    if ( ! createjs.Sound.initializeDefaultPlugins()) {
+        console.error("CreateJS.Sound error cannot init initializeDefaultPlugins");
+    }
+    createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin]);
+    createjs.Sound.alternateExtensions = ["mp3"];
+    gameSounds.forEach(function(soundConfig) {
+        assetManifest.push({
+            src: soundConfig.src,
+            id: soundConfig.id
+        });
+    });
+    gameAssetsManifest.forEach(function(asset) {
+        assetManifest.push({
+            src: asset.src,
+            id: asset.id
+        })
+    });
+    loadQueue.loadManifest(assetManifest);
+    loadQueue.load();
+}
+
+/**
+ * We come here when all assets are loaded.
+ */
+function handleLoadComplete() {
+    const spriteSheetName = "invader-sprites-frames";
+    const spriteSheetFrames = loadQueue.getResult(spriteSheetName);
+    if (spriteSheetFrames != null) {
+        spriteSheet = spriteSheetFrames;
+        spriteSheet.images = [loadQueue.getResult("invader-sprites")];
+        spriteSheet.spriteData = new createjs.SpriteSheet(spriteSheetFrames);
+    } else {
+        console.error("Error: sprite sheet " + spriteSheetName + " was not loaded.");
+    }
+
+    resizeCanvas();
+    gameStateNext(GAME_STATES.MENU);
 }

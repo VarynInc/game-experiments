@@ -1,0 +1,26 @@
+{
+
+"images": [
+    "invader-sprites.png"
+],
+
+"framerate": 30,
+"frames": [
+    [229, 1, 144, 151, 0, -6, 0],
+    [1, 249, 156, 144, 0, 0, 0],
+    [229, 154, 144, 151, 0, -6, 0],
+    [159, 307, 144, 151, 0, -6, 0],
+    [1, 1, 226, 246, 0, -3, -2]
+],
+
+"animations": {
+    "enemy": { "frames": [0, 1, 2, 3] },
+    "ship": { "frames": [4] }
+},
+
+"texturepacker": [
+        "SmartUpdateHash: $TexturePacker:SmartUpdate:89972da2d8b96b79aa0e05f2f4268272:653d12a19b1bf7902bdcb63792b045a3:5d008da44e232d9671988b4afefb44dc$",
+        "Created with TexturePacker (https://www.codeandweb.com/texturepacker) for EaselJS"
+]
+
+}
