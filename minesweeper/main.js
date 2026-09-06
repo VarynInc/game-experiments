@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
   createBoard(width, numberOfSpies)
   flagsLeft.innerHTML = numberOfSpies
 
-  //add Flag with right click
+  // add Flag with right click
   function addFlag(cell) {
     if (isGameOver) { return };
     if ( ! cell.classList.contains("checked")) {
